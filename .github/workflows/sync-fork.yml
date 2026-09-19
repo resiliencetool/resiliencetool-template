@@ -1,0 +1,38 @@
+name: Sync fork with template
+
+# Runs automatically every day, and can also be triggered manually from
+# the "Actions" tab in GitHub if you ever want to force an immediate
+# sync rather than waiting for the daily schedule.
+on:
+  schedule:
+    - cron: "0 6 * * *"   # 06:00 UTC daily
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out this repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pull in any changes from the template repo
+        run: |
+          git remote add template https://github.com/resiliencetool/resiliencetool-template.git
+          git fetch template
+
+          # Merge the template's changes into this fork. If this firm's
+          # copy has never been manually edited (the expected case — see
+          # licence terms), this always succeeds cleanly with nothing to
+          # resolve. If it ever fails, that means a genuine conflict —
+          # most likely because someone edited this fork directly — and
+          # the job below will fail loudly rather than silently giving up,
+          # so it shows up as a red X in the Actions tab rather than going
+          # unnoticed.
+          git merge template/main --allow-unrelated-histories -m "Auto-sync from template" || {
+            echo "::error::Sync failed — likely a conflict with local edits to this fork. Manual review needed."
+            exit 1
+          }
+
+          git push origin main
