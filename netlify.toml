@@ -1,0 +1,19 @@
+[build]
+  command = "node netlify/build-scripts/inject-credentials.js"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/app/*"
+  to = "/app.html"
+  status = 200
+
+[functions."keep-alive-and-backup"]
+  schedule = "0 3 */5 * *"
+
+[template.environment]
+  SUPABASE_URL = "Your Supabase project URL (Settings > API)"
+  SUPABASE_ANON_KEY = "Your Supabase anon/publishable key (Settings > API — safe for browser-facing code)"
+  SUPABASE_SERVICE_ROLE_KEY = "Your Supabase service_role secret key (Settings > API — NOT the anon key. Used only by server-side Functions, never exposed to the browser)"
+  PROJECT_LABEL = "Your firm name, used in backup email subject lines"
+  BACKUP_NOTIFICATION_EMAIL = "Email address that should receive database backups"
+  LICENCE_KEY = "The licence key provided to you by V Finances"

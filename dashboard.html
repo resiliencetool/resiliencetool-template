@@ -1,0 +1,2695 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ResilienceTool — Dashboard</title>
+  <meta charset="utf-8">
+  <style>
+    body{font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;}
+    button, input, select, textarea { font-family: inherit; }
+    .wrapper{max-width:900px;margin:auto;}
+    .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+    h1{font-size:22px;color:#132869;margin:0;}
+    #logoutBtn{padding:8px 16px;background:#132869;color:#fff;border:none;border-radius:6px;cursor:pointer;}
+    #refreshBtn{padding:8px 16px;background:#fff;color:#132869;border:1px solid #132869;border-radius:6px;cursor:pointer;margin-right:8px;}
+    #status{color:#666;}
+    table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;}
+    th,td{padding:10px;text-align:left;border-bottom:1px solid #eee;}
+    th{background:#f0f0f0;}
+    tbody tr:nth-child(even){background:#f9f9fb;}
+.text-block{margin:0;line-height:1.4;}
+.text-block+.text-block{margin-top:8px;}
+.box{border:1px solid #ddd;padding:15px;border-radius:10px;margin-top:20px;background:#fff;}
+.result{border:1px solid #ddd;padding:20px;border-radius:12px;margin-bottom:20px;}
+.risk{color:#fff;text-align:center;padding:16px;border-radius:10px;}
+.big{font-size:28px;font-weight:700;}
+.ind{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;}
+.green{background:#1e8449;}.orange{background:#e67e22;}.red{background:#b00020;}
+.section-title{font-size:22px;font-weight:700;color:#132869;margin-bottom:10px;}
+.policyRow{border:1px solid #e0e0e0;border-radius:8px;padding:12px;margin-bottom:10px;background:#fafafa;}
+.policyRow label{font-size:12px;color:#555;display:block;margin-top:6px;}
+.policyRow select,.policyRow input{width:100%;padding:7px;margin-top:2px;box-sizing:border-box;}
+.policyRowGrid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;}
+.removeRowBtn{margin-top:10px;background:#b00020;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;}
+.addPolicyBtn{background:#eef3ff;color:#132869;border:1px solid #132869;padding:8px 14px;border-radius:6px;cursor:pointer;margin-bottom:14px;}
+.outcomeEntry{border-top:1px solid #eee;padding:10px 0;}
+.outcomeEntry .productLine{padding:4px 0;font-size:14px;}
+.apptBadge{display:inline-block;background:#1e8449;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:6px;}
+.sectionHeading{font-size:16px;font-weight:700;color:#132869;margin:20px 0 8px 0;}
+.outcomeFormWrapper{border:1px solid #e0e0e0;border-radius:8px;padding:16px;background:#fafafa;margin-top:10px;}
+.outcomeFormWrapper .sectionHeading:first-child{margin-top:0;}
+.primaryBtn{padding:10px 16px;background:#132869;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;}
+.actionBtnRow{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.showOnMobileOnly{display:none;}
+.actionBtnRow .primaryBtn{margin-top:0;}
+input[type="date"]{padding:8px;box-sizing:border-box;}
+.toggleBtn{padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;background:#fff;}
+.toggleGreen{border:1px solid #1e8449;color:#1e8449;}
+.toggleGreen.toggleActive{background:#1e8449;color:#fff;}
+.toggleRed{border:1px solid #b00020;color:#b00020;}
+.toggleRed.toggleActive{background:#b00020;color:#fff;}
+.toggleBlue{border:1px solid #2a6fdb;color:#2a6fdb;}
+.toggleBlue.toggleActive{background:#2a6fdb;color:#fff;}
+.noCoverBtn{background:#fdecea;color:#b00020;border:1px solid #b00020;}
+.noCoverBtn.toggleActive{background:#b00020;color:#fff;}
+.addPolicyBtn:disabled{opacity:0.4;cursor:not-allowed;}
+.noCoverBadge{display:inline-block;background:#b00020;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:6px;}
+.refusedBadge{display:inline-block;background:#b00020;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:6px;}
+.followUpBadge{display:inline-block;background:#2a6fdb;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:6px;}
+
+/* ===== CARD OVERVIEW (new) ===== */
+.cardGrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px;}
+@media(max-width:600px){
+
+  .cardGrid{grid-template-columns:1fr;}
+
+  /* Cards were readable-but-cramped on mobile even once stacking kicked
+     in — bigger icon/title/description sizing and touch-friendly padding
+     makes each card easier to tap and read at a glance. */
+  .dashCard{padding:20px;}
+  .cardIcon{font-size:34px;}
+  .cardTitle{font-size:19px;}
+  .cardDesc{font-size:14px;}
+
+  /* Header title + Refresh/Log Out buttons were squeezed onto one row —
+     stacking gives the title room to breathe and makes both buttons
+     properly tappable rather than tiny side-by-side targets. */
+  .header{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:12px;
+  }
+  h1{font-size:20px;}
+  #refreshBtn,
+  #logoutBtn{
+    padding:12px 20px;
+    font-size:15px;
+  }
+  #refreshBtn{margin-right:10px;}
+
+  /* Data tables (Submissions, Outcomes, etc.) had the same tiny-text
+     problem as everything else pre-viewport-fix — bumping cell padding
+     and font-size keeps them legible without needing to pinch-zoom. */
+  th,td{
+    padding:12px 8px;
+    font-size:14px;
+  }
+
+  /* Back button and primary action buttons throughout the dashboard
+     (Edit Details, Save, etc.) get the same touch-friendly treatment. */
+  #backBtn,
+  .primaryBtn,
+  .toggleBtn,
+  .removeAdviserBtn,
+  .addPolicyBtn,
+  .portalLinkBtn{
+    padding:12px 18px;
+    font-size:15px;
+  }
+
+  /* Report action buttons (Download/What-If/Email/GDPR) were wrapping
+     inconsistently side-by-side on mobile — different widths, uneven
+     gaps. Stacking them full-width, one per row, matches the uniform
+     look already used for email buttons and card actions elsewhere. */
+  .actionBtnRow{
+    flex-direction:column;
+  }
+  .actionBtnRow .primaryBtn{
+    width:100%;
+  }
+
+  /* Used for the Submitted timestamp column — full date+time on desktop,
+     date-only on mobile, since the full timestamp adds width the mobile
+     table doesn't need. Client Email was removed from this table
+     entirely (not just hidden on mobile) — it's shown centred under the
+     report title in the detail view instead, per GDPR-lookup preference. */
+  .hideOnMobile{
+    display:none;
+  }
+  .showOnMobileOnly{
+    display:inline;
+  }
+
+}
+.dashCard{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:24px;cursor:pointer;transition:box-shadow 0.15s, transform 0.15s;}
+.dashCard:hover{box-shadow:0 4px 14px rgba(19,40,105,0.12);transform:translateY(-2px);}
+.cardIcon{font-size:28px;margin-bottom:8px;}
+.cardTitle{font-size:17px;font-weight:700;color:#132869;margin-bottom:4px;}
+.cardDesc{font-size:13px;color:#777;}
+.comingSoonBox{background:#fff;border:1px dashed #ccc;border-radius:10px;padding:30px;text-align:center;color:#888;margin-top:10px;}
+
+/* ===== SECTION VIEW (new) ===== */
+#backBtn{padding:8px 16px;background:#fff;color:#132869;border:1px solid #132869;border-radius:6px;cursor:pointer;margin-bottom:16px;font-size:14px;}
+
+/* ===== ADVISER FILTER BAR (new) ===== */
+#adviserFilterBar{display:none;background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:12px 16px;margin-bottom:16px;align-items:center;gap:10px;}
+#adviserFilterBar label{font-size:13px;font-weight:700;color:#132869;}
+#adviserFilter{padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;}
+#scopeLabel{font-size:13px;color:#777;}
+
+/* ===== COMPARISON TABLE (new) ===== */
+#comparisonArea table{margin-top:10px;}
+
+/* Lets wide tables (Adviser Comparison, Conversion Stats) scroll
+   horizontally within their own card on narrow screens instead of
+   overflowing past its edges — no font shrinking needed, and it works
+   regardless of how long an adviser's name is or how many columns the
+   table has. white-space:nowrap on cells stops headers/values wrapping
+   awkwardly mid-word, which would defeat the point of scrolling. */
+.tableScrollWrap{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.tableScrollWrap table{
+  margin-top:10px;
+}
+.tableScrollWrap th,
+.tableScrollWrap td{
+  white-space:nowrap;
+  text-align:center;
+}
+.tableScrollWrap th.colLeft,
+.tableScrollWrap td.colLeft{
+  text-align:left;
+}
+.tableScrollWrap th .colSub{
+  display:block;
+  font-weight:400;
+  font-size:11px;
+  color:#777;
+  white-space:normal;
+}
+#comparisonArea tfoot td{font-weight:700;background:#eef3ff;}
+
+/* ===== SUBSCRIPTION & ADVISER MANAGEMENT (new) ===== */
+.inviteBadge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:6px;}
+.inviteBadge.pending{background:#e67e22;color:#fff;}
+.inviteBadge.active{background:#1e8449;color:#fff;}
+.inviteBadge.sent{background:#1e8449;color:#fff;}
+.inviteBadge.failed{background:#b00020;color:#fff;}
+.resendLink{font-size:12px;color:#132869;margin-left:8px;cursor:pointer;text-decoration:underline;}
+.removeAdviserBtn{background:#b00020;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;}
+.addAdviserForm input{width:100%;padding:8px;margin:4px 0 10px;box-sizing:border-box;border:1px solid #ccc;border-radius:6px;}
+.addAdviserForm label{font-size:12px;color:#555;}
+.priceSummary{background:#eef3ff;border-radius:8px;padding:14px 18px;margin-bottom:16px;font-size:15px;color:#132869;}
+.portalLinkBtn{background:#fff;color:#132869;border:1px solid #132869;padding:10px 16px;border-radius:6px;cursor:pointer;font-size:14px;margin-top:10px;}
+
+/* ===== YOUR WIDGET (new) ===== */
+.widgetAdviserBlock{background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:18px;margin-bottom:16px;}
+.widgetAdviserBlock h4{margin:0 0 12px;color:#132869;}
+.snippetLabel{font-size:12px;font-weight:700;color:#555;margin:12px 0 4px;}
+.snippetBox{background:#f4f4f4;border:1px solid #ddd;border-radius:6px;padding:10px 12px;font-family:monospace;font-size:12px;word-break:break-all;white-space:pre-wrap;margin-bottom:4px;}
+.copyBtn{font-size:12px;padding:5px 10px;background:#eef3ff;color:#132869;border:1px solid #132869;border-radius:5px;cursor:pointer;}
+
+/* ===== CONVERSION FUNNEL (new) ===== */
+#funnelArea table{margin-top:10px;}
+#personalStatsArea table{margin-top:10px;}
+
+/* ===== SCORE COMPARISON (new) ===== */
+#scoreComparisonArea table{margin-top:10px;}
+.scoreUp{color:#1e8449;font-weight:700;}
+.scoreDown{color:#b00020;font-weight:700;}
+.scoreSame{color:#777;}
+
+/* ===== ANALYTICS MONTH BAR (new) ===== */
+#analyticsMonthBar{background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:10px;}
+#analyticsMonthBar label{font-size:13px;font-weight:700;color:#132869;}
+#analyticsMonth{padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;}
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+  <div class="header">
+    <h1 id="pageTitle">Dashboard</h1>
+    <div>
+      <button id="refreshBtn">Refresh</button>
+      <button id="logoutBtn">Log Out</button>
+    </div>
+  </div>
+  <div id="status">Loading...</div>
+
+  <!-- ===== ADVISER FILTER BAR (company logins only) ===== -->
+  <div id="adviserFilterBar">
+    <label for="adviserFilter">Viewing:</label>
+    <select id="adviserFilter">
+      <option value="">Overview (all advisers)</option>
+    </select>
+    <span id="sectionOnlyLabel" style="display:none;font-weight:700;color:#132869;"></span>
+    <span id="scopeLabel"></span>
+  </div>
+
+  <!-- ===== CARD OVERVIEW SCREEN ===== -->
+  <div id="cardOverview" style="display:none;">
+    <div class="cardGrid">
+      <div class="dashCard" onclick="showSection('submissions')">
+        <div class="cardIcon">📋</div>
+        <div class="cardTitle">Submissions</div>
+        <div class="cardDesc">View client reports and log outcomes</div>
+      </div>
+      <div class="dashCard" onclick="showSection('appointments')">
+        <div class="cardIcon">📅</div>
+        <div class="cardTitle">Upcoming Appointments</div>
+        <div class="cardDesc">Booked appointments coming up</div>
+      </div>
+      <div class="dashCard" onclick="showSection('outcomes')">
+        <div class="cardIcon">📊</div>
+        <div class="cardTitle">Outcomes &amp; Analytics</div>
+        <div class="cardDesc">Track premiums and results</div>
+      </div>
+      <div class="dashCard" onclick="showSection('scorecomparison')">
+        <div class="cardIcon">📈</div>
+        <div class="cardTitle">Score Comparison</div>
+        <div class="cardDesc">Original vs updated client scores</div>
+      </div>
+      <div class="dashCard" id="widgetCard" onclick="showSection('widget')" style="display:none;">
+        <div class="cardIcon">🔗</div>
+        <div class="cardTitle">Your Widget</div>
+        <div class="cardDesc">Embed links and snippets</div>
+      </div>
+      <div class="dashCard" id="subscriptionCard" onclick="showSection('subscription')" style="display:none;">
+        <div class="cardIcon">⚙️</div>
+        <div class="cardTitle">Manage Subscription &amp; Advisers</div>
+        <div class="cardDesc">Billing and team management</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION VIEW (Submissions / Outcomes / Widget / Subscription) ===== -->
+  <div id="sectionView" style="display:none;">
+    <button id="backBtn" onclick="showOverview()">← Back to Overview</button>
+    <div id="sectionContent"></div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "__SUPABASE_URL__";
+const SUPABASE_KEY = "__SUPABASE_ANON_KEY__";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const statusEl = document.getElementById("status");
+const pageTitle = document.getElementById("pageTitle");
+const cardOverview = document.getElementById("cardOverview");
+const sectionView = document.getElementById("sectionView");
+const sectionContent = document.getElementById("sectionContent");
+
+const DEFERRED_PERIODS = ["4 weeks","8 weeks","13 weeks","26 weeks","52 weeks"];
+const CLAIM_PERIODS = [
+  { value: "full_term", label: "Full Term" },
+  { value: "5yr", label: "5 Year" },
+  { value: "2yr", label: "2 Year" },
+  { value: "1yr", label: "1 Year" }
+];
+const PRODUCT_LABELS = {
+  life: "Life Cover",
+  ci: "Critical Illness Cover",
+  life_ci: "Combined Life & Critical Illness",
+  ip: "Income Protection"
+};
+
+// Human-readable label per section, used to keep the "Viewing:" bar in
+// sync with whichever card the user is currently inside — both for the
+// company-login dropdown's blank option and the adviser-only plain-text
+// equivalent.
+const SECTION_LABELS = {
+  submissions: "Submissions",
+  appointments: "Upcoming Appointments",
+  outcomes: "Outcomes & Analytics",
+  scorecomparison: "Score Comparison",
+  widget: "Your Widget",
+  subscription: "Manage Subscription & Advisers"
+};
+
+// Translates outcome-form values (human-readable, for nice Outcome History
+// display) into the exact <option value> strings widget.js's ipClaim/d1
+// selects expect on Step 8. Without this, Model an Update silently fails
+// validateStep(8) whenever an IP outcome exists — neither field matches a
+// real option, so both revert to blank.
+function normaliseClaimPeriod(stored){
+  const map = {
+    full_term: "Full-term",
+    "5yr": "5",
+    "2yr": "2",
+    "1yr": "1"
+  };
+  return map[stored] || stored;
+}
+
+function normaliseDeferredPeriod(stored){
+  if(!stored) return stored;
+  const match = String(stored).match(/\d+/);
+  return match ? match[0] : stored;
+}
+
+let policyRowCounter = 0;
+
+/* ===== INIT — determines role, shows card overview (no auto data-loading) ===== */
+async function init(){
+  cardOverview.style.display = "none";
+  sectionView.style.display = "none";
+  statusEl.textContent = "Loading...";
+
+  const { data: { session } } = await supabaseClient.auth.getSession();
+
+  if(!session){
+    window.location.href = "/dashboard-login.html";
+    return;
+  }
+
+  const email = session.user.email;
+  const accessToken = session.access_token;
+
+  const { data: companyMatch } = await supabaseClient
+    .from("companies")
+    .select("id, company_name, company_slug")
+    .eq("company_email", email)
+    .maybeSingle();
+
+  const { data: adviserMatch } = await supabaseClient
+    .from("advisers")
+    .select("id, adviser_name, company_id, adviser_slug, companies(company_slug)")
+    .eq("adviser_email", email)
+    .eq("active", true)
+    .maybeSingle();
+
+  if(companyMatch){
+    // Solo owner-advisers use the same email for both rows — they still get
+    // full outcome-logging ability even while viewing the company dashboard.
+    window.CURRENT_ROLE = {
+      isCompany: true,
+      isAdviser: !!adviserMatch,
+      companyId: companyMatch.id,
+      adviserId: adviserMatch ? adviserMatch.id : null,
+      selectedAdviserId: null,
+      selectedAdviserName: null,
+      accessToken: accessToken,
+      companySlug: companyMatch.company_slug
+    };
+    pageTitle.textContent = companyMatch.company_name + " Dashboard";
+    document.getElementById("widgetCard").style.display = "block";
+    document.getElementById("subscriptionCard").style.display = "block";
+    document.getElementById("adviserFilterBar").style.display = "flex";
+    document.getElementById("adviserFilter").style.display = "inline-block";
+    document.getElementById("sectionOnlyLabel").style.display = "none";
+    await loadAdviserFilterOptions(companyMatch.id);
+    statusEl.textContent = "";
+    showOverview();
+    return;
+  }
+
+  if(adviserMatch){
+    window.CURRENT_ROLE = {
+      isCompany: false,
+      isAdviser: true,
+      companyId: adviserMatch.company_id,
+      adviserId: adviserMatch.id,
+      adviserSlug: adviserMatch.adviser_slug,
+      companySlug: adviserMatch.companies?.company_slug,
+      accessToken: accessToken
+    };
+    pageTitle.textContent = adviserMatch.adviser_name + "'s Dashboard";
+    document.getElementById("widgetCard").style.display = "block";
+    // No adviser-comparison dropdown at this level (there's only one
+    // adviser to view), but the same "Viewing:" bar is still shown with a
+    // plain-text label so the section context stays visually consistent
+    // with the company dashboard.
+    document.getElementById("adviserFilterBar").style.display = "flex";
+    document.getElementById("adviserFilter").style.display = "none";
+    document.getElementById("sectionOnlyLabel").style.display = "inline";
+    statusEl.textContent = "";
+    showOverview();
+    return;
+  }
+
+  statusEl.textContent = "No matching company or adviser found for this account.";
+}
+
+/* ===== ADVISER FILTER (new) ===== */
+async function loadAdviserFilterOptions(companyId){
+  const select = document.getElementById("adviserFilter");
+  document.getElementById("scopeLabel").textContent = "";
+
+  const { data, error } = await supabaseClient
+    .from("advisers")
+    .select("id, adviser_name")
+    .eq("company_id", companyId)
+    .eq("active", true)
+    .order("adviser_name", { ascending: true });
+
+  if(error || !data) return;
+
+  select.innerHTML = `<option value="">Overview (all advisers)</option>` +
+    data.map(a => `<option value="${a.id}">${a.adviser_name}</option>`).join("");
+
+  select.onchange = () => {
+    const selectedId = select.value || null;
+    const selectedName = selectedId ? select.options[select.selectedIndex].text : null;
+    window.CURRENT_ROLE.selectedAdviserId = selectedId;
+    window.CURRENT_ROLE.selectedAdviserName = selectedName;
+    updateViewingLabel(window.CURRENT_SECTION);
+    if(window.CURRENT_SECTION){
+      showSection(window.CURRENT_SECTION);
+    }
+  };
+}
+
+/* Keeps the "Viewing:" bar in sync with whichever card the user is
+   currently inside.
+   - Company login: rewrites the dropdown's blank option to "<Section>
+     (all advisers)" instead of the static "Overview (all advisers)", and
+     if a specific adviser is selected, updates the scope label to
+     "<Section> for <Adviser Name>" instead of the old generic
+     "Filtered to <Adviser Name>".
+   - Adviser-only login: no dropdown exists, so the same context is shown
+     as plain text in #sectionOnlyLabel instead. */
+function updateViewingLabel(sectionName){
+  const label = sectionName ? (SECTION_LABELS[sectionName] || "Overview") : "Overview";
+
+  if(!window.CURRENT_ROLE) return;
+
+  if(window.CURRENT_ROLE.isCompany){
+    const select = document.getElementById("adviserFilter");
+    if(select && select.options.length > 0){
+      select.options[0].text = `${label} (all advisers)`;
+    }
+    const scopeLabelEl = document.getElementById("scopeLabel");
+    scopeLabelEl.textContent = window.CURRENT_ROLE.selectedAdviserId
+      ? `${label} for ${window.CURRENT_ROLE.selectedAdviserName}`
+      : "";
+  } else {
+    document.getElementById("sectionOnlyLabel").textContent = label;
+  }
+}
+
+/* Resolves which column/id every data-loading function should query against,
+   based on role and whether a specific adviser is selected in the filter bar. */
+function getScope(){
+  if(!window.CURRENT_ROLE.isCompany){
+    return { column: "adviser_id", id: window.CURRENT_ROLE.adviserId, label: "for you" };
+  }
+  if(window.CURRENT_ROLE.selectedAdviserId){
+    return { column: "adviser_id", id: window.CURRENT_ROLE.selectedAdviserId, label: `for ${window.CURRENT_ROLE.selectedAdviserName}` };
+  }
+  return { column: "company_id", id: window.CURRENT_ROLE.companyId, label: "across all advisers" };
+}
+
+/* ===== SECTION NAVIGATION (new) ===== */
+function showOverview(){
+  window.CURRENT_SECTION = null;
+  sectionView.style.display = "none";
+  cardOverview.style.display = "block";
+  sectionContent.innerHTML = "";
+  updateViewingLabel(null);
+}
+
+function showSection(name){
+  window.CURRENT_SECTION = name;
+  cardOverview.style.display = "none";
+  sectionView.style.display = "block";
+  updateViewingLabel(name);
+
+  if(name === "submissions"){
+    sectionContent.innerHTML = `<div id="submissionsArea"></div>`;
+    const scope = getScope();
+    loadSubmissions(scope.column, scope.id);
+    return;
+  }
+
+  if(name === "appointments"){
+    sectionContent.innerHTML = `<div id="appointmentsArea"></div>`;
+    const scope = getScope();
+    loadUpcomingAppointments(scope.column, scope.id);
+    return;
+  }
+
+  if(name === "outcomes"){
+    const scope = getScope();
+    // Company (viewing "all advisers") gets both tables scoped to every
+    // adviser. An individual adviser login gets the SAME two tables,
+    // scoped to just their own row — same columns, same headers, same
+    // information the company sees about them, not a separate cut-down
+    // table with different metrics.
+    const showComparison = window.CURRENT_ROLE.isCompany && !window.CURRENT_ROLE.selectedAdviserId;
+    const showPersonalStats = !window.CURRENT_ROLE.isCompany;
+    const showAnyBreakdown = showComparison || showPersonalStats;
+
+    sectionContent.innerHTML = `<div id="outcomesArea"></div>` +
+      (showAnyBreakdown ? `
+        <div id="analyticsMonthBar" style="margin-top:20px;">
+          <label for="analyticsMonth">Month:</label>
+          <select id="analyticsMonth">${getMonthOptions().map(o => `<option value="${o.value}">${o.label}</option>`).join("")}</select>
+        </div>
+        <div id="comparisonArea" style="margin-top:20px;"></div>
+        <div id="funnelArea" style="margin-top:20px;"></div>
+      ` : "");
+
+    loadOutcomesRollup(scope.id, scope.column, scope.label);
+
+    if(showAnyBreakdown){
+      const monthSelect = document.getElementById("analyticsMonth");
+      const scopeAdviserId = showPersonalStats ? window.CURRENT_ROLE.adviserId : null;
+      const runAnalytics = () => {
+        loadAdviserComparison(window.CURRENT_ROLE.companyId, monthSelect.value, scopeAdviserId);
+        loadConversionStats(window.CURRENT_ROLE.companyId, monthSelect.value, scopeAdviserId);
+      };
+      monthSelect.onchange = runAnalytics;
+      runAnalytics();
+    }
+
+    return;
+  }
+
+  if(name === "scorecomparison"){
+    // detailArea added here so "View" can render an inline preview via
+    // viewSubmission(), matching how the Submissions section behaves —
+    // previously this section had no detailArea, so the link fell back to
+    // forcing a download instead of a preview.
+    sectionContent.innerHTML = `<div id="scoreComparisonArea"></div><div id="detailArea" style="margin-top:20px;"></div>`;
+    const scope = getScope();
+    loadScoreComparison(scope.column, scope.id);
+    return;
+  }
+
+  if(name === "widget"){
+    sectionContent.innerHTML = `<div id="widgetArea"></div>`;
+    loadWidgetSection();
+    return;
+  }
+
+  if(name === "subscription"){
+    sectionContent.innerHTML = `<div id="subscriptionArea"></div>`;
+    loadSubscriptionSection();
+    return;
+  }
+}
+
+async function loadSubmissions(column, id){
+  const submissionsArea = document.getElementById("submissionsArea");
+  submissionsArea.innerHTML = "<p>Loading submissions...</p>";
+
+  let query = supabaseClient
+    .from("submissions")
+    .select(column === "company_id" ? "id, created_at, client_name, client_email, report_html, score, raw_inputs, adviser_id, parent_submission_id, advisers(adviser_name, adviser_slug)" : "id, created_at, client_name, client_email, report_html, score, raw_inputs, parent_submission_id")
+    .eq(column, id)
+    .order("created_at", { ascending: false });
+
+  const { data, error } = await query;
+
+  if(error){
+    submissionsArea.innerHTML = "<p>Error loading submissions: " + error.message + "</p>";
+    return;
+  }
+
+  if(!data || data.length === 0){
+    submissionsArea.innerHTML = "<p>No submissions yet.</p>";
+    return;
+  }
+
+  window.SUBMISSIONS_DATA = data;
+
+  let showAdviser = column === "company_id";
+
+  // Group by client (email preferred, falls back to name if email missing)
+  // so the table shows one row per client with their latest submission,
+  // and older submissions nest underneath rather than cluttering the list.
+  let groups = {};
+  data.forEach(s => {
+    let key = (s.client_email || s.client_name || `unknown_${s.id}`).toLowerCase();
+    if(!groups[key]) groups[key] = [];
+    groups[key].push(s);
+  });
+
+  let clientGroups = Object.values(groups).map(list => {
+    list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return { latest: list[0], history: list.slice(1) };
+  });
+  clientGroups.sort((a, b) => new Date(b.latest.created_at) - new Date(a.latest.created_at));
+
+  let rows = clientGroups.map(group => {
+    const s = group.latest;
+    const mainRow = `
+      <tr>
+        ${showAdviser ? `<td>${s.advisers?.adviser_name || "—"}</td>` : ""}
+        <td>${s.client_name || "—"}</td>
+        <td>${s.score != null ? s.score : "—"}</td>
+        <td><span class="hideOnMobile">${formatSubmissionTimestamp(s.created_at)}</span><span class="showOnMobileOnly">${new Date(s.created_at).toLocaleDateString()}</span></td>
+        <td id="reassignCell_${s.id}"><a href="#" onclick="viewSubmission(${s.id}); return false;">View</a>${showAdviser ? ` | <a href="#" onclick="reassignSubmission(${s.id}); return false;">Reassign</a>` : ""}</td>
+      </tr>
+    `;
+
+    if(group.history.length === 0) return mainRow;
+
+    const historyId = `history_${s.id}`;
+    const toggleRow = `
+      <tr style="background:#fffbea;">
+        <td colspan="${showAdviser ? 5 : 4}" style="padding:4px 10px;">
+          <a href="#" style="font-size:12px;" onclick="toggleSubmissionHistory('${historyId}'); return false;">▸ ${group.history.length} earlier submission${group.history.length === 1 ? "" : "s"}</a>
+        </td>
+      </tr>
+    `;
+
+    // Earlier submissions are now plain rows in the SAME outer table as
+    // the main row above, not a separate nested <table> — a nested table
+    // calculates its own column widths independently of the outer one,
+    // which meant text-align:center was genuinely being applied (confirmed
+    // via DevTools) but had no visible effect, since each column shrank to
+    // fit its own snug content with no extra room to actually show
+    // centering. Sharing the exact same table/columns as the already-
+    // correct main rows makes mismatched alignment structurally
+    // impossible, rather than something to keep chasing with CSS.
+    const historyRows = group.history.map(h => `
+      <tr class="${historyId}" style="display:none;background:#fffbea;">
+        ${showAdviser ? `<td>${h.advisers?.adviser_name || "—"}</td>` : ""}
+        <td>${h.client_name || "—"}</td>
+        <td>${h.score != null ? h.score : "—"}</td>
+        <td><span class="hideOnMobile">${formatSubmissionTimestamp(h.created_at)}</span><span class="showOnMobileOnly">${new Date(h.created_at).toLocaleDateString()}</span></td>
+        <td id="reassignCell_${h.id}"><a href="#" onclick="viewSubmission(${h.id}); return false;">View</a>${showAdviser ? ` | <a href="#" onclick="reassignSubmission(${h.id}); return false;">Reassign</a>` : ""}</td>
+      </tr>
+    `).join("");
+
+    return mainRow + toggleRow + historyRows;
+  }).join("");
+
+  submissionsArea.innerHTML = `
+    <div class="tableScrollWrap">
+      <table>
+        <thead>
+          <tr>${showAdviser ? '<th>Adviser</th>' : ""}<th>Client Name</th><th>Score</th><th>Submitted</th><th></th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div id="detailArea" style="margin-top:20px;"></div>
+  `;
+}
+
+/* ===== REASSIGN SUBMISSION (company dashboard only) =====
+   Swaps a row's "View | Reassign" cell for an inline adviser picker.
+   Historical outcomes are deliberately untouched by this — only the
+   submission's own adviser_id changes, so credit for anything already
+   logged stays with whoever actually did that work. */
+async function reassignSubmission(submissionId){
+  if(!window.CURRENT_ROLE.isCompany) return;
+
+  const { data: advisers, error } = await supabaseClient
+    .from("advisers")
+    .select("id, adviser_name")
+    .eq("company_id", window.CURRENT_ROLE.companyId)
+    .eq("active", true)
+    .order("adviser_name", { ascending: true });
+
+  if(error || !advisers || advisers.length === 0){
+    alert("Could not load advisers to reassign to.");
+    return;
+  }
+
+  const cell = document.getElementById(`reassignCell_${submissionId}`);
+  if(!cell) return;
+
+  const options = advisers.map(a => `<option value="${a.id}">${a.adviser_name}</option>`).join("");
+
+  cell.innerHTML = `
+    <select id="reassignSelect_${submissionId}" style="padding:4px;font-size:13px;">${options}</select>
+    <button onclick="confirmReassign(${submissionId})" style="margin-left:4px;font-size:12px;padding:4px 8px;background:#132869;color:#fff;border:none;border-radius:4px;cursor:pointer;">Confirm</button>
+    <button onclick="cancelReassign()" style="margin-left:4px;font-size:12px;padding:4px 8px;background:#fff;color:#132869;border:1px solid #132869;border-radius:4px;cursor:pointer;">Cancel</button>
+  `;
+}
+
+function cancelReassign(){
+  const scope = getScope();
+  loadSubmissions(scope.column, scope.id);
+}
+
+async function confirmReassign(submissionId){
+  const select = document.getElementById(`reassignSelect_${submissionId}`);
+  if(!select) return;
+
+  const newAdviserId = select.value;
+  const newAdviserName = select.options[select.selectedIndex]?.text || "this adviser";
+
+  if(!confirm(`Reassign this client to ${newAdviserName}? They'll be notified by email.`)) return;
+
+  try {
+    const res = await fetch("/.netlify/functions/reassign-submission", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        submissionId: submissionId,
+        newAdviserId: newAdviserId,
+        companyId: window.CURRENT_ROLE.companyId,
+        accessToken: window.CURRENT_ROLE.accessToken
+      })
+    });
+    const result = await res.json();
+
+    if(!res.ok){
+      alert("Error: " + (result.error || "Could not reassign this lead."));
+      return;
+    }
+
+    const scope = getScope();
+    loadSubmissions(scope.column, scope.id);
+  } catch(err){
+    alert("Error: " + err.message);
+  }
+}
+
+/* Same date+time as before, just without seconds — "1:35:01 AM" reads as
+   more precision than anyone needs for "when was this submitted", and
+   frees up a little width in the Submissions table. */
+function formatSubmissionTimestamp(dateStr){
+  return new Date(dateStr).toLocaleString("en-GB", {
+    year: "numeric", month: "numeric", day: "numeric",
+    hour: "numeric", minute: "2-digit"
+  });
+}
+
+function toggleSubmissionHistory(historyId){
+  const rows = document.querySelectorAll("." + historyId);
+  rows.forEach(row => {
+    row.style.display = row.style.display === "none" ? "table-row" : "none";
+  });
+}
+
+async function requestGdprDeletion(id, clientEmail){
+  if(!clientEmail){
+    alert("This submission has no client email on file — cannot look up all their records safely. Contact support if this client genuinely needs deleting.");
+    return;
+  }
+
+  const typed = prompt(`This will PERMANENTLY delete every submission and outcome for this client (${clientEmail}) — not just this one. This cannot be undone.\n\nType the client's email exactly to confirm:`);
+
+  if(typed !== clientEmail){
+    if(typed !== null){
+      alert("Email didn't match — nothing was deleted.");
+    }
+    return;
+  }
+
+  try {
+    const res = await fetch("/.netlify/functions/gdpr-delete-client", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientEmail: clientEmail,
+        companyId: window.CURRENT_ROLE.companyId,
+        accessToken: window.CURRENT_ROLE.accessToken
+      })
+    });
+    const result = await res.json();
+
+    if(!res.ok){
+      alert("Error: " + (result.error || "Could not delete client data."));
+      return;
+    }
+
+    alert(`Deleted ${result.submissionsDeleted} submission(s) and ${result.outcomesDeleted} outcome(s) for this client.`);
+    showOverview();
+  } catch(err){
+    alert("Error: " + err.message);
+  }
+}
+
+function tryWhatIf(id){
+  const submission = window.SUBMISSIONS_DATA.find(s => s.id === id);
+  if(!submission) return;
+
+  const adviserSlug = window.CURRENT_ROLE.isCompany
+    ? submission.advisers?.adviser_slug
+    : window.CURRENT_ROLE.adviserSlug;
+
+  if(!adviserSlug){
+    alert("Could not determine the adviser link for this submission — please try again from the adviser's own dashboard login.");
+    return;
+  }
+
+  try {
+    localStorage.setItem("resilienceToolCalculator", JSON.stringify({
+      rawInputs: submission.raw_inputs,
+      clientName: submission.client_name
+    }));
+  } catch(err){
+    alert("Could not prepare the calculator — " + err.message);
+    return;
+  }
+
+  window.open(`${WIDGET_BASE_URL}/app/${window.CURRENT_ROLE.companySlug}/${adviserSlug}`, "_blank");
+}
+
+function modelUpdate(id){
+  const submission = window.SUBMISSIONS_DATA.find(s => s.id === id);
+  if(!submission) return;
+
+  const adviserSlug = window.CURRENT_ROLE.isCompany
+    ? submission.advisers?.adviser_slug
+    : window.CURRENT_ROLE.adviserSlug;
+
+  if(!adviserSlug){
+    alert("Could not determine the adviser link for this submission — please try again from the adviser's own dashboard login.");
+    return;
+  }
+
+  // Start from a copy of the original inputs, then overlay whatever's been
+  // actually logged as taken — only overriding fields where a matching
+  // outcome_product exists, so anything not touched by an outcome stays as
+  // it was in the original assessment.
+  let rawInputs = JSON.parse(JSON.stringify(submission.raw_inputs || {}));
+  const aggregated = window.AGGREGATED_COVER?.[id];
+
+  if(aggregated){
+    rawInputs.l1 = aggregated.l1;
+    rawInputs.lt1 = aggregated.lt1;
+    rawInputs.lifePremium = aggregated.lifePremium;
+
+    rawInputs.c1 = aggregated.c1;
+    rawInputs.ct1 = aggregated.ct1;
+    rawInputs.ciPremium = aggregated.ciPremium;
+
+    rawInputs.combinedPremium = aggregated.combinedPremium;
+    rawInputs.lifeCicPremiumType = aggregated.lifeCicPremiumType;
+
+    // Explicitly derived rather than left for widget.js's own fallback
+    // logic to infer — that fallback exists for data saved before this
+    // selection field existed, not as an ongoing dependency for the
+    // current Model an Update flow.
+    if(aggregated.l1 > 0 && aggregated.c1 > 0){
+      rawInputs.lifeCicSelection = aggregated.lifeCicPremiumType === "combined" ? "both_combined" : "both_separate";
+    } else if(aggregated.l1 > 0){
+      rawInputs.lifeCicSelection = "life_only";
+    } else if(aggregated.c1 > 0){
+      rawInputs.lifeCicSelection = "ci_only";
+    } else {
+      rawInputs.lifeCicSelection = "none";
+    }
+
+    rawInputs.ip1 = aggregated.ip1;
+    rawInputs.ipe = aggregated.ipe;
+    rawInputs.ipClaim = aggregated.ipClaim;
+    rawInputs.d1 = aggregated.d1;
+    rawInputs.ipPremium = aggregated.ipPremium;
+  }
+
+  try {
+    localStorage.setItem("resilienceToolModelUpdate", JSON.stringify({
+      submissionId: submission.id,
+      rawInputs: rawInputs,
+      clientName: submission.client_name
+    }));
+  } catch(err){
+    alert("Could not prepare the update — " + err.message);
+    return;
+  }
+
+  window.open(`${WIDGET_BASE_URL}/app/${window.CURRENT_ROLE.companySlug}/${adviserSlug}`, "_blank");
+}
+
+async function openEmailClient(id){
+  const statusEl = document.getElementById(`sendReportStatus_${id}`);
+
+  const cached = (window.SUBMISSIONS_DATA || []).find(s => s.id === id);
+  const clientEmail = cached?.client_email || "";
+  const clientName = cached?.client_name || "";
+  const firstName = clientName.split(" ")[0] || "there";
+
+  if(!clientEmail){
+    if(statusEl){
+      statusEl.style.color = "#b00020";
+      statusEl.textContent = "No client email on file for this submission.";
+    }
+    return;
+  }
+
+  // Company/adviser details aren't cached client-side by default — fetched
+  // fresh here the same way downloadReport() already fetches branding
+  // details for a given submission.
+  let companyName = "ResilienceTool";
+  let adviserName = "Your adviser";
+  let adviserPhone = "";
+  let bookingUrl = "";
+  let emailSignature = "";
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("submissions")
+      .select(`advisers ( adviser_name, adviser_phone, booking_url, companies ( company_name, email_signature ) )`)
+      .eq("id", id)
+      .single();
+    if(!error && data?.advisers){
+      adviserName = data.advisers.adviser_name || adviserName;
+      adviserPhone = data.advisers.adviser_phone || "";
+      bookingUrl = (data.advisers.booking_url && data.advisers.booking_url !== "#") ? data.advisers.booking_url : "";
+      companyName = data.advisers.companies?.company_name || companyName;
+      emailSignature = data.advisers.companies?.email_signature || "";
+    }
+  } catch(err){
+    console.error("Could not load adviser/company details for email:", err);
+  }
+
+  let contactLines = [];
+  if(bookingUrl) contactLines.push(`Book a consultation: ${bookingUrl}`);
+  if(adviserPhone) contactLines.push(`Call me on: ${adviserPhone}`);
+  const contactBlock = contactLines.length ? contactLines.join("\n") + "\n\n" : "";
+
+  // Compliance requires this on every client-facing email — appended after
+  // the adviser's own sign-off, exactly as the company wrote it in Manage
+  // Subscription & Advisers.
+  const signatureBlock = emailSignature ? `\n\n${emailSignature}` : "";
+
+  const body =
+`*** REMINDER: ATTACH THE DOWNLOADED REPORT BEFORE SENDING ***
+
+Dear ${firstName},
+
+Please see attached your Financial Resilience Report from ${companyName} that you recently completed. The report is important as it highlights the potential impacts of inadequate cover and shows which areas of protection need addressing.
+
+I would be more than happy to help you put appropriate cover in place to safeguard what's important to you and improve your resilience.
+
+${contactBlock}Kind Regards,
+
+${adviserName}${signatureBlock}`;
+
+  const subject = encodeURIComponent(`Your Financial Resilience Report from ${companyName}`);
+  const mailtoUrl = `mailto:${encodeURIComponent(clientEmail)}?subject=${subject}&body=${encodeURIComponent(body)}`;
+
+  window.location.href = mailtoUrl;
+}
+
+function riskColour(score){
+  if(score >= 80) return { c: "#1e8449", label: "Strong" };
+  if(score >= 45) return { c: "#e67e22", label: "Moderate" };
+  return { c: "#b00020", label: "Weak" };
+}
+
+function stripReportButtons(html){
+  const temp = document.createElement("div");
+  temp.innerHTML = html || "";
+  temp.querySelectorAll("button").forEach(btn => btn.remove());
+  return temp.innerHTML;
+}
+
+/* Walks the full parent_submission_id chain for a submission — both up to
+   the original root AND down to every descendant created via Model an
+   Update — using whatever's currently loaded in window.SUBMISSIONS_DATA.
+   Outcomes/notes need to be pulled from every submission in this chain,
+   not just the exact record being viewed, otherwise history logged against
+   an earlier (or later) link in the chain silently disappears from view —
+   and the same gap was causing Model an Update to lose track of policies
+   logged after the first update ran. */
+function getSubmissionChainIds(submissionId){
+  const all = window.SUBMISSIONS_DATA || [];
+  let chain = new Set([submissionId]);
+  let changed = true;
+
+  while(changed){
+    changed = false;
+    all.forEach(s => {
+      if(chain.has(s.id) && s.parent_submission_id && !chain.has(s.parent_submission_id)){
+        chain.add(s.parent_submission_id);
+        changed = true;
+      }
+      if(s.parent_submission_id && chain.has(s.parent_submission_id) && !chain.has(s.id)){
+        chain.add(s.id);
+        changed = true;
+      }
+    });
+  }
+
+  return Array.from(chain);
+}
+
+function viewSubmission(id){
+  const submission = window.SUBMISSIONS_DATA.find(s => s.id === id);
+  if(!submission) return;
+
+  const detailArea = document.getElementById("detailArea");
+  policyRowCounter = 0;
+
+  const canLogOutcome = window.CURRENT_ROLE && window.CURRENT_ROLE.isAdviser;
+
+  const outcomeFormHtml = canLogOutcome ? `
+    <div class="outcomeFormWrapper">
+      <div class="sectionHeading">Appointment</div>
+      <input type="hidden" id="appointmentStatus_${id}" value="">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button type="button" id="apptBookedBtn_${id}" class="toggleBtn toggleGreen" onclick="setAppointmentStatus(${id}, 'booked')">+ Add Appointment</button>
+        <button type="button" id="apptFollowUpBtn_${id}" class="toggleBtn toggleBlue" onclick="setAppointmentStatus(${id}, 'follow_up_booked')">+ Add Follow-Up Appointment</button>
+        <button type="button" id="apptRefusedBtn_${id}" class="toggleBtn toggleRed" onclick="setAppointmentStatus(${id}, 'refused')">❌ Appointment Declined</button>
+      </div>
+      <div id="appointmentDateWrap_${id}" style="display:none;margin-top:8px;">
+        <label>Appointment Date</label><br>
+        <input type="date" id="appointmentDate_${id}">
+      </div>
+
+      <div class="sectionHeading">Log Outcome</div>
+      <div id="policyGateWarning_${id}" style="background:#fff6e5;border:1px solid #e67e22;border-radius:6px;padding:10px 12px;font-size:13px;color:#7a4a00;margin-bottom:12px;">
+        Record an appointment outcome above before logging any policies taken.
+      </div>
+      <input type="hidden" id="noCoverTaken_${id}" value="false">
+      <div id="policyRowsContainer_${id}"></div>
+
+      <div style="display:flex;gap:10px;margin-bottom:14px;">
+        <button type="button" class="addPolicyBtn" id="addPolicyBtn_${id}" onclick="addPolicyRow(${id})" disabled>+ Add Another Policy</button>
+        <button type="button" class="addPolicyBtn noCoverBtn" id="noCoverBtn_${id}" onclick="toggleNoCoverTaken(${id})" disabled>No Cover Taken</button>
+      </div>
+
+      <div class="sectionHeading">Notes (optional)</div>
+      <textarea id="outcomeNotes_${id}" style="width:100%;padding:8px;margin:6px 0;" rows="3"></textarea>
+
+      <button onclick="saveOutcome(${id})" class="primaryBtn" style="width:100%;">Save</button>
+      <div id="outcomeStatus" style="margin-top:10px;"></div>
+    </div>
+  ` : `
+      <div class="sectionHeading">Outcome History</div>
+      <p style="color:#666;font-size:14px;">Outcomes are logged by the adviser this submission belongs to.</p>
+  `;
+
+  const rc = submission.score != null ? riskColour(submission.score) : null;
+  const scoreHtml = rc ? `
+    <div class="risk" style="background:${rc.c};margin-bottom:15px;">
+      <b>Overall Financial Resilience Score</b><br>
+      ${rc.label}<br>
+      <div class="big">${submission.score}/100</div>
+    </div>
+  ` : "";
+
+  detailArea.innerHTML = `
+    <div style="background:#fff;padding:20px;border-radius:8px;margin-top:10px;">
+      <h3 style="text-align:center;">Report for ${submission.client_name || "Client"}</h3>
+      ${submission.client_email ? `<p style="text-align:center;color:#666;margin-top:-8px;">${submission.client_email}</p>` : ""}
+      ${scoreHtml}
+      <div style="max-height:400px;overflow:auto;border:1px solid #eee;padding:10px;margin-bottom:20px;">
+        ${stripReportButtons(submission.report_html)}
+      </div>
+      <div class="actionBtnRow">
+        <button onclick="downloadReport(${id})" class="primaryBtn">Download Report</button>
+        ${canLogOutcome ? `<button onclick="tryWhatIf(${id})" class="primaryBtn" style="background:#7c5cbf;">Try What-If Scenarios</button>` : ""}
+        ${canLogOutcome ? `<button onclick="openEmailClient(${id})" class="primaryBtn" style="background:#1e8449;">Email Report to Client</button>` : ""}
+        ${window.CURRENT_ROLE.isCompany ? `<button onclick="requestGdprDeletion(${id}, '${(submission.client_email || "").replace(/'/g,"\\'")}')" class="primaryBtn" style="background:#b00020;">Delete All Client Data (GDPR)</button>` : ""}
+      </div>
+      <div id="sendReportStatus_${id}" style="margin-top:8px;font-size:13px;"></div>
+
+      ${outcomeFormHtml}
+      <div id="outcomeHistory" style="margin-top:10px;"></div>
+
+      ${canLogOutcome ? `
+      <div style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;">
+        <p style="font-size:13px;color:#7a4a00;background:#fff6e5;border:1px solid #e67e22;border-radius:6px;padding:8px 12px;margin-bottom:10px;">⚠️ Please check every change has been logged — new policies, replacements, and anything being cancelled — before generating a new report. Cover that hasn't changed carries forward automatically and doesn't need re-entering.</p>
+        <button id="modelUpdateBtn_${id}" onclick="modelUpdate(${id})" class="primaryBtn" style="background:#2a6fdb;display:none;width:100%;">Generate Updated Report from Policies Taken</button>
+        <p style="font-size:12px;color:#888;margin-top:6px;">Creates a new report reflecting every policy logged above — available once at least one outcome has been recorded.</p>
+        <p style="font-size:12px;color:#888;margin-top:4px;">Once generated, refresh this page (or click Refresh at the top) to see the new report appear in this client's submissions.</p>
+      </div>
+      ` : ""}
+    </div>
+  `;
+
+  loadOutcomeHistory(id);
+}
+
+function setAppointmentStatus(submissionId, status){
+  const hiddenInput = document.getElementById(`appointmentStatus_${submissionId}`);
+  const newStatus = hiddenInput.value === status ? "" : status;
+  hiddenInput.value = newStatus;
+
+  document.getElementById(`apptBookedBtn_${submissionId}`).classList.toggle("toggleActive", newStatus === "booked");
+  document.getElementById(`apptFollowUpBtn_${submissionId}`).classList.toggle("toggleActive", newStatus === "follow_up_booked");
+  document.getElementById(`apptRefusedBtn_${submissionId}`).classList.toggle("toggleActive", newStatus === "refused");
+  document.getElementById(`appointmentDateWrap_${submissionId}`).style.display = (newStatus === "booked" || newStatus === "follow_up_booked") ? "block" : "none";
+
+  // Policies can only be logged once an appointment outcome has actually
+  // been recorded — prevents cover being entered speculatively ahead of a
+  // real conversation with the client.
+  const hasAppointment = newStatus !== "";
+  const addPolicyBtn = document.getElementById(`addPolicyBtn_${submissionId}`);
+  const noCoverBtn = document.getElementById(`noCoverBtn_${submissionId}`);
+  const warning = document.getElementById(`policyGateWarning_${submissionId}`);
+  if(addPolicyBtn) addPolicyBtn.disabled = !hasAppointment;
+  if(noCoverBtn) noCoverBtn.disabled = !hasAppointment;
+  if(warning) warning.style.display = hasAppointment ? "none" : "block";
+}
+
+function toggleNoCoverTaken(submissionId){
+  const hiddenInput = document.getElementById(`noCoverTaken_${submissionId}`);
+  const btn = document.getElementById(`noCoverBtn_${submissionId}`);
+  const addBtn = document.getElementById(`addPolicyBtn_${submissionId}`);
+  const container = document.getElementById(`policyRowsContainer_${submissionId}`);
+  const isActive = hiddenInput.value === "true";
+
+  if(isActive){
+    hiddenInput.value = "false";
+    btn.classList.remove("toggleActive");
+    addBtn.disabled = false;
+  } else {
+    hiddenInput.value = "true";
+    btn.classList.add("toggleActive");
+    container.innerHTML = "";
+    addBtn.disabled = true;
+  }
+}
+
+function addPolicyRow(submissionId){
+  const noCoverInput = document.getElementById(`noCoverTaken_${submissionId}`);
+  if(noCoverInput && noCoverInput.value === "true"){
+    noCoverInput.value = "false";
+    document.getElementById(`noCoverBtn_${submissionId}`)?.classList.remove("toggleActive");
+    document.getElementById(`addPolicyBtn_${submissionId}`).disabled = false;
+  }
+
+  policyRowCounter++;
+  const rowId = policyRowCounter;
+  const container = document.getElementById(`policyRowsContainer_${submissionId}`);
+
+  const row = document.createElement("div");
+  row.className = "policyRow";
+  row.id = `policyRow_${rowId}`;
+  row.innerHTML = `
+    <label>Product</label>
+    <select id="productType_${rowId}" onchange="updateProductFields(${rowId})">
+      <option value="life">Life Cover</option>
+      <option value="ci">Critical Illness Cover</option>
+      <option value="life_ci">Combined Life & Critical Illness</option>
+      <option value="ip">Income Protection</option>
+    </select>
+
+    <label>Is this new/additional cover, or does it replace something the client already had?</label>
+    <select id="replacesCategory_${rowId}">
+      <option value="">New / Additional cover</option>
+      <option value="life">Replaces: Life Cover for Mortgage</option>
+      <option value="ci">Replaces: Critical Illness Cover for Mortgage</option>
+      <option value="life_ci">Replaces: Combined Life and Critical Illness Cover for Mortgage</option>
+      <option value="ip">Replaces: Income Protection</option>
+    </select>
+
+    <div>
+      <label id="coverAmountLabel_${rowId}">Sum Assured (£)</label>
+      <input type="number" step="0.01" id="coverAmount_${rowId}">
+    </div>
+
+    <div id="termField_${rowId}">
+      <label id="termLabel_${rowId}">Term (years)</label>
+      <input type="number" id="term_${rowId}" placeholder="e.g. 20">
+    </div>
+
+    <div id="ciCoverFields_${rowId}" style="display:none;">
+      <label>Critical Illness Sum Assured (£)</label>
+      <input type="number" step="0.01" id="ciCoverAmount_${rowId}">
+
+      <label>Critical Illness Term (years)</label>
+      <input type="number" id="ciTerm_${rowId}" placeholder="e.g. 20">
+    </div>
+
+    <div>
+      <label>Monthly Premium (£)</label>
+      <input type="number" step="0.01" id="policyPremium_${rowId}">
+    </div>
+
+    <div id="ipFields_${rowId}" style="display:none;">
+      <div class="policyRowGrid">
+        <div>
+          <label>To Age</label>
+          <input type="number" id="toAge_${rowId}" placeholder="e.g. 65">
+        </div>
+        <div>
+          <label>Deferred Period</label>
+          <select id="deferredPeriod_${rowId}">
+            ${DEFERRED_PERIODS.map(p => `<option value="${p}">${p}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+      <label>Claim Period</label>
+      <select id="claimPeriod_${rowId}">
+        ${CLAIM_PERIODS.map(c => `<option value="${c.value}">${c.label}</option>`).join("")}
+      </select>
+    </div>
+
+    <button type="button" class="removeRowBtn" onclick="removePolicyRow(${rowId})">Remove Policy</button>
+  `;
+
+  container.appendChild(row);
+}
+
+function removePolicyRow(rowId){
+  const row = document.getElementById(`policyRow_${rowId}`);
+  if(row) row.remove();
+}
+
+function updateProductFields(rowId){
+  const productType = document.getElementById(`productType_${rowId}`).value;
+  const ipFields = document.getElementById(`ipFields_${rowId}`);
+  const ciCoverFields = document.getElementById(`ciCoverFields_${rowId}`);
+  const termField = document.getElementById(`termField_${rowId}`);
+  const coverLabel = document.getElementById(`coverAmountLabel_${rowId}`);
+  const termLabel = document.getElementById(`termLabel_${rowId}`);
+
+  if(productType === "ip"){
+    ipFields.style.display = "block";
+    ciCoverFields.style.display = "none";
+    termField.style.display = "none";
+    coverLabel.textContent = "Monthly Benefit (£)";
+  } else if(productType === "life_ci"){
+    ipFields.style.display = "none";
+    ciCoverFields.style.display = "block";
+    termField.style.display = "block";
+    // A combined policy can have different Life vs Critical Illness sum
+    // assured and terms even under one shared premium — the primary
+    // fields represent Life's portion, the fields below represent CIC's.
+    coverLabel.textContent = "Life Cover Sum Assured (£)";
+    termLabel.textContent = "Life Cover Term (years)";
+  } else {
+    ipFields.style.display = "none";
+    ciCoverFields.style.display = "none";
+    termField.style.display = "block";
+    coverLabel.textContent = "Sum Assured (£)";
+    termLabel.textContent = "Term (years)";
+  }
+}
+
+/* Deletes a mis-logged outcome entry (and its policy rows) after
+   confirmation. There was previously no way to correct a typo'd outcome
+   short of contacting support. */
+async function deleteOutcome(outcomeId, submissionId){
+  if(!confirm("Delete this outcome entry? This cannot be undone.")) return;
+
+  try {
+    // Delete child outcome_products rows first in case there's no ON
+    // DELETE CASCADE configured on the foreign key, then the outcome itself.
+    const { error: productsError } = await supabaseClient.from("outcome_products").delete().eq("outcome_id", outcomeId);
+
+    if(productsError){
+      alert("Error deleting policy details: " + productsError.message);
+      return;
+    }
+
+    const { error } = await supabaseClient.from("outcomes").delete().eq("id", outcomeId);
+
+    if(error){
+      alert("Error deleting outcome: " + error.message);
+      return;
+    }
+
+    loadOutcomeHistory(submissionId);
+  } catch(err){
+    alert("Error: " + err.message);
+  }
+}
+
+async function loadOutcomeHistory(submissionId){
+  // Query the FULL submission chain (original + every Model-an-Update
+  // descendant), not just this exact submission_id — otherwise outcomes
+  // logged against an earlier or later link in the chain silently vanish
+  // from view, and Model an Update loses track of policies logged after
+  // the first time it was run.
+  const chainIds = getSubmissionChainIds(submissionId);
+
+  const { data, error } = await supabaseClient
+    .from("outcomes")
+    .select("id, appointment_booked, appointment_status, appointment_date, no_cover_taken, notes, created_at, outcome_products(product_type, replaces_category, cover_amount, term, ci_cover_amount, ci_term, to_age, deferred_period, claim_period, monthly_premium)")
+    .in("submission_id", chainIds)
+    .order("created_at", { ascending: false });
+
+  if(error) return;
+
+  const historyEl = document.getElementById("outcomeHistory");
+
+  if(!data || data.length === 0){
+    // Nothing left in this client's history (e.g. their only outcome was
+    // just deleted) — clear the stale display and reset dependent UI back
+    // to its original locked state, rather than leaving the just-deleted
+    // entry visible until a full page refresh.
+    if(historyEl) historyEl.innerHTML = "";
+
+    const modelUpdateBtnEl = document.getElementById(`modelUpdateBtn_${submissionId}`);
+    if(modelUpdateBtnEl) modelUpdateBtnEl.style.display = "none";
+
+    const addPolicyBtnEl = document.getElementById(`addPolicyBtn_${submissionId}`);
+    const noCoverBtnEl = document.getElementById(`noCoverBtn_${submissionId}`);
+    const warningEl = document.getElementById(`policyGateWarning_${submissionId}`);
+    if(addPolicyBtnEl) addPolicyBtnEl.disabled = true;
+    if(noCoverBtnEl) noCoverBtnEl.disabled = true;
+    if(warningEl) warningEl.style.display = "block";
+
+    return;
+  }
+
+  // Model an Update only becomes available once at least one outcome has
+  // been logged anywhere in this client's chain — nothing to model before
+  // that point.
+  const modelUpdateBtn = document.getElementById(`modelUpdateBtn_${submissionId}`);
+  if(modelUpdateBtn) modelUpdateBtn.style.display = "block";
+
+  // Policy logging is gated on a real appointment outcome existing — but
+  // that gate previously only checked whether the CURRENT form session had
+  // a toggle clicked, not whether an appointment was already genuinely
+  // logged in an earlier visit. That meant re-opening a client whose
+  // appointment was booked last week still showed policy logging as
+  // locked, forcing the adviser to re-log an appointment status just to
+  // unlock it. Checking the real history here fixes that — the toggle
+  // buttons remain fully usable if the adviser wants to log a genuinely
+  // new or follow-up appointment, this just stops forcing that step when
+  // one already exists.
+  const hasExistingAppointment = data.some(o => o.appointment_status === "booked" || o.appointment_status === "follow_up_booked");
+  if(hasExistingAppointment){
+    const addPolicyBtn = document.getElementById(`addPolicyBtn_${submissionId}`);
+    const noCoverBtn = document.getElementById(`noCoverBtn_${submissionId}`);
+    const warning = document.getElementById(`policyGateWarning_${submissionId}`);
+    if(addPolicyBtn) addPolicyBtn.disabled = false;
+    if(noCoverBtn) noCoverBtn.disabled = false;
+    if(warning) warning.style.display = "none";
+  }
+
+  // Aggregate every product across every outcome ever logged anywhere in
+  // this client's chain, starting from their ORIGINAL baseline figures and
+  // walking outcomes chronologically. Each policy either adds on top of its
+  // slot (amount, term via shortest-wins, and premium all increase
+  // together) or wipes the slot entirely and replaces it (amount, term,
+  // AND premium all together — never just the premium alone, since a
+  // replaced policy's old sum assured and term are no longer real either).
+  window.AGGREGATED_COVER = window.AGGREGATED_COVER || {};
+  const allProducts = data
+    .slice()
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    .flatMap(o => o.outcome_products || []);
+
+  if(allProducts.length > 0){
+
+    const rootSubmission = (window.SUBMISSIONS_DATA || []).find(s => chainIds.includes(s.id) && !s.parent_submission_id)
+      || (window.SUBMISSIONS_DATA || []).find(s => chainIds.includes(s.id));
+    const baseline = rootSubmission?.raw_inputs || {};
+
+    // Amount/term are tracked per type (life, ci) independently — a
+    // Combined policy can still have different sum assured and terms for
+    // each side, even though it shares one premium.
+    let state = {
+      life: { amount: parseFloat(baseline.l1) || 0, term: parseFloat(baseline.lt1) || 0 },
+      ci: { amount: parseFloat(baseline.c1) || 0, term: parseFloat(baseline.ct1) || 0 },
+      ip: {
+        amount: parseFloat(baseline.ip1) || 0,
+        toAge: baseline.ipe || "",
+        claim: baseline.ipClaim || "",
+        deferred: baseline.d1 || "",
+        premium: parseFloat(baseline.ipPremium) || 0
+      }
+    };
+
+    // Premium is tracked separately from amount/term, and its MODE
+    // (separate vs combined) can genuinely change as real outcomes are
+    // logged — not just inherited once from the baseline and abandoned.
+    // Logging a standalone Life or CIC policy switches to (or stays in)
+    // separate mode; logging a genuine Combined policy switches to (or
+    // stays in) combined mode, correctly capturing ONE shared premium
+    // rather than counting it against both Life and CIC.
+    const wasCombined = state.life.amount > 0 && state.ci.amount > 0 && baseline.lifeCicPremiumType === "combined";
+    let premiumMode = wasCombined ? "combined" : "separate";
+    let lifePremium = wasCombined ? 0 : (parseFloat(baseline.lifePremium) || 0);
+    let ciPremium = wasCombined ? 0 : (parseFloat(baseline.ciPremium) || 0);
+    let combinedPremium = wasCombined ? (parseFloat(baseline.combinedPremium) || 0) : 0;
+
+    function applyAmountTerm(slot, amt, term, isReplace){
+      if(isReplace){
+        slot.amount = amt;
+        slot.term = term;
+      } else {
+        // Shortest term among contributing policies — cover for the tail
+        // end of the mortgage only holds if EVERY contributing policy is
+        // still in force, so the shortest is the honest ceiling. If there
+        // was nothing in this slot before, the new policy's term is simply
+        // the term, not min(0, term).
+        let hadPreviousCover = slot.amount > 0;
+        slot.amount += amt;
+        slot.term = hadPreviousCover ? Math.min(slot.term, term) : term;
+      }
+    }
+
+    allProducts.forEach(p => {
+
+      let isReplace = !!p.replaces_category;
+      let target = p.replaces_category;
+      let prem = parseFloat(p.monthly_premium) || 0;
+
+      if(p.product_type === "life"){
+        // A standalone Life policy can't coexist with a "combined" premium
+        // representation — switching to separate mode here. The CIC side's
+        // premium can't be un-split from whatever combined figure existed
+        // before, so it's cleared rather than guessed at; it'll be
+        // correctly restored the moment a real CIC (or Combined) outcome
+        // is itself logged.
+        if(premiumMode === "combined"){
+          ciPremium = 0;
+          premiumMode = "separate";
+        }
+        applyAmountTerm(state.life, parseFloat(p.cover_amount) || 0, parseFloat(p.term) || 0, isReplace && (target === "life" || target === "life_ci"));
+        if(isReplace && (target === "life" || target === "life_ci")){
+          lifePremium = prem;
+        } else {
+          lifePremium += prem;
+        }
+      }
+      else if(p.product_type === "ci"){
+        if(premiumMode === "combined"){
+          lifePremium = 0;
+          premiumMode = "separate";
+        }
+        applyAmountTerm(state.ci, parseFloat(p.cover_amount) || 0, parseFloat(p.term) || 0, isReplace && (target === "ci" || target === "life_ci"));
+        if(isReplace && (target === "ci" || target === "life_ci")){
+          ciPremium = prem;
+        } else {
+          ciPremium += prem;
+        }
+      }
+      else if(p.product_type === "life_ci"){
+        // A genuine combined policy — one shared premium, but Life and CIC
+        // amounts/terms are tracked independently since they can differ.
+        // ci_cover_amount/ci_term are new columns; older outcomes logged
+        // before they existed fall back to the single shared amount/term
+        // the old form used, so historical data still aggregates sensibly.
+        let lifeAmt = parseFloat(p.cover_amount) || 0;
+        let lifeTerm = parseFloat(p.term) || 0;
+        let ciAmt = (p.ci_cover_amount !== null && p.ci_cover_amount !== undefined) ? (parseFloat(p.ci_cover_amount) || 0) : lifeAmt;
+        let ciTerm = (p.ci_term !== null && p.ci_term !== undefined) ? (parseFloat(p.ci_term) || 0) : lifeTerm;
+
+        applyAmountTerm(state.life, lifeAmt, lifeTerm, isReplace && (target === "life" || target === "life_ci"));
+        applyAmountTerm(state.ci, ciAmt, ciTerm, isReplace && (target === "ci" || target === "life_ci"));
+
+        if(isReplace && target === "life_ci"){
+          // A full combined replacement — the new shared premium simply
+          // replaces whatever was there before, regardless of prior mode.
+          combinedPremium = prem;
+        } else if(premiumMode === "combined"){
+          combinedPremium += prem;
+        } else {
+          // Converting from separate mode into combined — folds whatever
+          // separate premiums existed into the new combined total, rather
+          // than losing track of them.
+          combinedPremium = lifePremium + ciPremium + prem;
+          lifePremium = 0;
+          ciPremium = 0;
+        }
+        premiumMode = "combined";
+      }
+      else if(p.product_type === "ip"){
+        let slot = state.ip;
+        let amt = parseFloat(p.cover_amount) || 0;
+        if(isReplace && target === "ip"){
+          slot.amount = amt;
+          slot.toAge = p.to_age || slot.toAge;
+          slot.claim = p.claim_period || slot.claim;
+          slot.deferred = p.deferred_period || slot.deferred;
+          slot.premium = prem;
+        } else {
+          slot.amount += amt;
+          slot.toAge = p.to_age || slot.toAge;
+          slot.claim = p.claim_period || slot.claim;
+          slot.deferred = p.deferred_period || slot.deferred;
+          slot.premium += prem;
+        }
+      }
+
+    });
+
+    let aggregated = {
+      l1: state.life.amount,
+      lt1: state.life.term,
+      lifePremium: premiumMode === "combined" ? 0 : lifePremium,
+      c1: state.ci.amount,
+      ct1: state.ci.term,
+      ciPremium: premiumMode === "combined" ? 0 : ciPremium,
+      combinedPremium: premiumMode === "combined" ? combinedPremium : 0,
+      lifeCicPremiumType: premiumMode,
+      ip1: state.ip.amount,
+      ipe: state.ip.toAge,
+      // The outcome-logging form stores human-readable values ("5yr",
+      // "8 weeks") for nice display in Outcome History, but widget.js's
+      // ipClaim/d1 <select> fields expect their own specific option values
+      // ("5", "Full-term", "8") — this translation was never done, so
+      // Model an Update silently failed validateStep(8) whenever an IP
+      // outcome existed anywhere in the chain, since neither field would
+      // match a real <option> and both reverted to blank.
+      ipClaim: normaliseClaimPeriod(state.ip.claim),
+      d1: normaliseDeferredPeriod(state.ip.deferred),
+      ipPremium: state.ip.premium,
+      totalPremium: (premiumMode === "combined" ? combinedPremium : (lifePremium + ciPremium)) + state.ip.premium
+    };
+
+    // Aggregated cover is keyed by every id in the chain, so whichever
+    // submission the adviser happens to be viewing (original or any
+    // update) resolves to the same, complete aggregation.
+    chainIds.forEach(cid => {
+      window.AGGREGATED_COVER[cid] = aggregated;
+    });
+  }
+
+  document.getElementById("outcomeHistory").innerHTML = data.map(o => {
+    const productLines = (o.outcome_products || []).map(p => {
+      let detail = `${PRODUCT_LABELS[p.product_type] || p.product_type}`;
+      if(p.product_type === "ip"){
+        detail += ` — £${p.cover_amount || 0} to age ${p.to_age || "—"}, ${p.deferred_period || "—"} deferred, ${CLAIM_PERIODS.find(c=>c.value===p.claim_period)?.label || p.claim_period || "—"} claim`;
+      } else if(p.product_type === "life_ci"){
+        // Life and CIC portions can have different sum assured/terms even
+        // under one shared premium — shown separately here for clarity.
+        detail += ` — Life £${p.cover_amount || 0} over ${p.term || "—"} years, CIC £${p.ci_cover_amount || p.cover_amount || 0} over ${p.ci_term || p.term || "—"} years`;
+      } else {
+        detail += ` — £${p.cover_amount || 0} over ${p.term || "—"} years`;
+      }
+      detail += ` — £${p.monthly_premium || 0}/mo`;
+      if(p.replaces_category){
+        detail += ` <i>(replaces ${PRODUCT_LABELS[p.replaces_category] || p.replaces_category})</i>`;
+      } else {
+        detail += ` <i>(new/additional)</i>`;
+      }
+      return `<div class="productLine">${detail}</div>`;
+    }).join("");
+
+    return `
+      <div class="outcomeEntry">
+        <small>${new Date(o.created_at).toLocaleString()}</small>
+        ${o.appointment_status === "booked" ? `<span class="apptBadge">Appointment Booked ${o.appointment_date || ""}</span>` : ""}
+        ${o.appointment_status === "follow_up_booked" ? `<span class="followUpBadge">Follow-Up Appointment Booked ${o.appointment_date || ""}</span>` : ""}
+        ${o.appointment_status === "refused" ? `<span class="refusedBadge">Appointment Declined</span>` : ""}
+        ${o.no_cover_taken ? `<span class="noCoverBadge">No Cover Taken</span>` : ""}
+        ${productLines}
+        ${o.notes ? `<p>${o.notes}</p>` : ""}
+        <div style="margin-top:6px;">
+          <a href="#" style="font-size:12px;color:#b00020;" onclick="deleteOutcome(${o.id}, ${submissionId}); return false;">Delete this outcome</a>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+// Uses the browser's native print engine — the same mechanism the client's
+// own Download Report button already relies on (savePDF() in widget.js) —
+// rather than a separate screenshot-based PDF pipeline. That gives real
+// pagination and respects the @media print CSS rules, so nothing gets cut
+// mid-sentence and the adviser genuinely sees the same "nice" version the
+// client got, not a separately-reconstructed approximation of it.
+async function downloadReport(id){
+  const cached = window.SUBMISSIONS_DATA.find(x=>x.id===id);
+  if(!cached) return;
+
+  // Cover page needs logo + adviser contact details, which aren't part of
+  // the cached submission row (that only has client_name/score/report_html)
+  // — fetched fresh here rather than relying on whichever section happened
+  // to load window.SUBMISSIONS_DATA, since different sections select
+  // different columns.
+  let logoUrl = "";
+  let adviserName = "";
+  let adviserEmail = "";
+  let adviserPhone = "";
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("submissions")
+      .select(`
+        client_name, score, report_html,
+        advisers ( adviser_name, adviser_email, adviser_phone, companies ( logo_url ) )
+      `)
+      .eq("id", id)
+      .single();
+
+    if(!error && data){
+      adviserName = data.advisers?.adviser_name || "";
+      adviserEmail = data.advisers?.adviser_email || "";
+      adviserPhone = data.advisers?.adviser_phone || "";
+      logoUrl = data.advisers?.companies?.logo_url || "";
+    }
+  } catch(err){
+    console.error("Could not load adviser/company branding for report:", err);
+  }
+
+  const s = cached;
+
+  const w = window.open('', '_blank');
+
+  const printCSS = `
+    /* @page margin needs a real value, not 0 — body padding only ever
+       applies once (top of page 1, bottom of the final page), it does NOT
+       repeat at every page boundary. @page margin is what gives every page
+       consistent breathing room. Trade-off: the browser's own default
+       print header/footer (URL/date/page number) may reappear — same known
+       limitation as before, but boxes sitting flush against the top of
+       every page 2+ was the bigger visual problem to fix. */
+    @page { margin: 15mm 12mm; }
+    :root{ --primary-colour:#132869; --secondary-colour:#facf39; }
+    * { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; box-sizing: border-box; }
+    body { margin: 0; padding: 0; color: #222; background: #fff; }
+    .text-block { margin: 0; line-height: 1.4; orphans: 3; widows: 3; }
+    .text-block + .text-block { margin-top: 8px; }
+    .text-block:first-child { margin-top: 0; }
+    .box { border: 1px solid #ddd; padding: 15px; border-radius: 10px; margin-top: 20px; background: #fff; break-inside: avoid; page-break-inside: avoid; }
+    .box + .box { margin-top: 15px; }
+    .result { border: 1px solid #ddd; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+    .risk { color: #fff; text-align: center; padding: 16px; border-radius: 10px; margin-bottom: 20px; break-inside: avoid; page-break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .big { font-size: 28px; font-weight: 700; }
+    .ind { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    .green { background: #1e8449; }
+    .orange { background: #e67e22; }
+    .red { background: #b00020; }
+    .section-title { font-size: 22px; font-weight: 700; color: #132869; margin-top: 30px; margin-bottom: 10px; border-bottom: 2px solid #eef3ff; padding-bottom: 5px; page-break-after: avoid; }
+    .highlight { margin-top: 10px; background: #eef3ff; color: #132869; text-align: center; padding: 16px; border-radius: 10px; break-inside: avoid; page-break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .btn, .btn-secondary, #resultActions { display: none !important; }
+    hr { border: none; border-top: 1px solid #eee; margin: 20px 0; }
+
+    /* This print stylesheet is maintained separately from the main one in
+       widget.js — it doesn't inherit new classes automatically, which is
+       exactly why these two were missing entirely (zero spacing in the
+       printed/downloaded PDF, despite looking correct everywhere else).
+       Values matched exactly to their widget.js equivalents. */
+    .planned-spending-title{
+      text-align:left;
+      font-weight:700;
+      margin-top:20px;
+      margin-bottom:10px;
+    }
+    .sectionDivider {
+      margin-top: 20px !important;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+    }
+    .sectionDivider:first-child {
+      margin-top: 0 !important;
+      padding-top: 0;
+      border-top: none;
+    }
+
+    /* Cover page: logo → title → score → adviser contact, own page */
+    #coverLogo { text-align: center; padding-top: 40px; }
+    #coverLogo img { max-height: 90px; max-width: 280px; }
+    #coverTitle { text-align: center; color: #132869; margin: 20px 0 20px; }
+    #coverAdviserContact {
+      text-align: center;
+      font-size: 13px;
+      color: #555;
+      margin-top: 18px;
+      padding-bottom: 40px;
+      break-after: page;
+      page-break-after: always;
+    }
+
+    /* Summary gets its own page */
+    .summary-box { break-after: page; page-break-after: always; }
+
+    /* What This Means / Where You Could Strengthen / Financial Flexibility
+       stay together on one page — the last of the three forces a break
+       after itself so Your Protection Analysis starts fresh. */
+    .opportunity-box { break-after: page; page-break-after: always; }
+
+    /* Budget Breakdown starts a clean new page, with real top padding
+       from the @page margin above. Protection Analysis follows straight
+       after the opportunity-box, which already forces its own break-after
+       — a break-before here too would double up and produce a blank page
+       between them, so it only gets top padding, not a forced break. */
+    #budgetBreakdownHeading {
+      break-before: page;
+      page-break-before: always;
+      padding-top: 10px;
+    }
+    #protectionAnalysisHeading {
+      padding-top: 10px;
+    }
+  `;
+
+  const rc = s.score != null ? riskColour(s.score) : null;
+  const scoreHtml = rc ? `
+    <div class="risk" style="background:${rc.c};margin-bottom:15px;">
+      <b>Overall Financial Resilience Score</b><br>
+      ${rc.label}<br>
+      <div class="big">${s.score}/100</div>
+    </div>
+  ` : "";
+
+  let contactLines = [];
+  if(adviserName) contactLines.push(`<div><strong>Adviser Name:</strong> ${adviserName}</div>`);
+  if(adviserEmail) contactLines.push(`<div><strong>Adviser Email Address:</strong> ${adviserEmail}</div>`);
+  if(adviserPhone) contactLines.push(`<div><strong>Adviser Phone Number:</strong> ${adviserPhone}</div>`);
+  const adviserContactHtml = contactLines.length ? contactLines.join("") : "";
+
+  const logoHtml = logoUrl ? `<div id="coverLogo"><img src="${logoUrl}"></div>` : `<div id="coverLogo" style="padding-top:40px;"></div>`;
+
+  const fullHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>${(s.client_name || "Client")}'s Financial Resilience Report</title>
+      <style>${printCSS}</style>
+    </head>
+    <body>
+      ${logoHtml}
+      <h2 id="coverTitle">${s.client_name || "Client"}'s Financial Resilience Report</h2>
+      ${scoreHtml}
+      <div id="coverAdviserContact">${adviserContactHtml}</div>
+      ${s.report_html}
+    </body>
+    </html>
+  `;
+
+  w.document.write(fullHtml);
+  w.document.close();
+
+  setTimeout(() => {
+    w.print();
+  }, 300);
+}
+
+async function saveOutcome(submissionId){
+  const outcomeStatus = document.getElementById("outcomeStatus");
+  outcomeStatus.textContent = "Saving...";
+
+  const container = document.getElementById(`policyRowsContainer_${submissionId}`);
+  const rowEls = container.querySelectorAll(".policyRow");
+
+  const appointmentStatus = document.getElementById(`appointmentStatus_${submissionId}`).value;
+  const appointmentDate = (appointmentStatus === "booked" || appointmentStatus === "follow_up_booked") ? document.getElementById(`appointmentDate_${submissionId}`).value : null;
+  const noCoverTaken = document.getElementById(`noCoverTaken_${submissionId}`).value === "true";
+
+  if((appointmentStatus === "booked" || appointmentStatus === "follow_up_booked") && !appointmentDate){
+    outcomeStatus.textContent = "Please enter the appointment date before saving.";
+    return;
+  }
+
+  const notes = document.getElementById(`outcomeNotes_${submissionId}`).value.trim();
+
+  if(rowEls.length === 0 && !noCoverTaken && !appointmentStatus && !notes){
+    outcomeStatus.textContent = "Log a policy, mark No Cover Taken, record an appointment outcome, or add a note before saving.";
+    return;
+  }
+
+  const adviserId = window.CURRENT_ROLE.adviserId;
+  const companyId = window.CURRENT_ROLE.companyId;
+
+  if(!adviserId){
+    outcomeStatus.textContent = "Only advisers can log outcomes.";
+    return;
+  }
+
+  const policies = [];
+  rowEls.forEach(rowEl => {
+    const rowId = rowEl.id.replace("policyRow_", "");
+    const productType = document.getElementById(`productType_${rowId}`).value;
+    const isIp = productType === "ip";
+    const isLifeCi = productType === "life_ci";
+    policies.push({
+      product_type: productType,
+      replaces_category: document.getElementById(`replacesCategory_${rowId}`)?.value || null,
+      cover_amount: parseFloat(document.getElementById(`coverAmount_${rowId}`).value) || null,
+      term: !isIp ? (document.getElementById(`term_${rowId}`).value || null) : null,
+      // A combined policy's Life and Critical Illness portions can carry
+      // different sum assured and terms even under one shared premium —
+      // these two fields capture CIC's portion specifically, only ever
+      // populated when Combined is the selected product.
+      ci_cover_amount: isLifeCi ? (parseFloat(document.getElementById(`ciCoverAmount_${rowId}`).value) || null) : null,
+      ci_term: isLifeCi ? (document.getElementById(`ciTerm_${rowId}`).value || null) : null,
+      to_age: isIp ? (document.getElementById(`toAge_${rowId}`).value || null) : null,
+      deferred_period: isIp ? document.getElementById(`deferredPeriod_${rowId}`).value : null,
+      claim_period: isIp ? document.getElementById(`claimPeriod_${rowId}`).value : null,
+      monthly_premium: parseFloat(document.getElementById(`policyPremium_${rowId}`).value) || 0
+    });
+  });
+
+  const totalPremium = policies.reduce((sum, p) => sum + (p.monthly_premium || 0), 0);
+  if(policies.length > 0){
+    const productTypesUsed = policies.map(p => p.product_type);
+    if(new Set(productTypesUsed).size !== productTypesUsed.length){
+      outcomeStatus.textContent = "Each product type can only be logged once — remove the duplicate policy row.";
+      return;
+    }
+  }
+  const productsSummary = noCoverTaken ? "No Cover Taken" : policies.map(p => PRODUCT_LABELS[p.product_type] || p.product_type).join(", ");
+
+  const { data: outcomeInsert, error: outcomeError } = await supabaseClient
+    .from("outcomes")
+    .insert({
+      submission_id: submissionId,
+      adviser_id: adviserId,
+      company_id: companyId,
+      products_taken: productsSummary,
+      monthly_premium: totalPremium,
+      notes: notes,
+      appointment_booked: appointmentStatus === "booked" || appointmentStatus === "follow_up_booked",
+      appointment_status: appointmentStatus || null,
+      appointment_date: appointmentDate,
+      no_cover_taken: noCoverTaken
+    })
+    .select()
+    .single();
+
+  if(outcomeError){
+    outcomeStatus.textContent = "Error saving outcome: " + outcomeError.message;
+    return;
+  }
+
+  const productRows = policies.map(p => ({
+    outcome_id: outcomeInsert.id,
+    submission_id: submissionId,
+    adviser_id: adviserId,
+    company_id: companyId,
+    ...p
+  }));
+
+  if(productRows.length > 0){
+    const { error: productsError } = await supabaseClient
+      .from("outcome_products")
+      .insert(productRows);
+
+    if(productsError){
+      outcomeStatus.textContent = "Outcome saved, but error saving policy details: " + productsError.message;
+      loadOutcomeHistory(submissionId);
+      return;
+    }
+  }
+
+  outcomeStatus.textContent = "✓ Outcome saved.";
+  loadOutcomeHistory(submissionId);
+}
+
+
+async function loadOutcomesRollup(id, column = "company_id", scopeLabel){
+  const outcomesArea = document.getElementById("outcomesArea");
+  outcomesArea.innerHTML = "<p>Loading outcomes...</p>";
+
+  const { data, error } = await supabaseClient
+    .from("outcomes")
+    .select("products_taken, monthly_premium, created_at, submission_id, submissions(client_name)")
+    .eq(column, id)
+    .order("created_at", { ascending: false });
+
+  if(error){
+    outcomesArea.innerHTML = "<p>Error loading outcomes: " + error.message + "</p>";
+    return;
+  }
+
+  if(!data || data.length === 0){
+    outcomesArea.innerHTML = "<p>No outcomes logged yet.</p>";
+    return;
+  }
+
+  let totalPremium = data.reduce((sum, o) => sum + (parseFloat(o.monthly_premium) || 0), 0);
+  scopeLabel = scopeLabel || (column === "company_id" ? "across all advisers" : "for you");
+
+  let rows = data.map(o => `
+    <tr>
+      <td class="colLeft">${o.submissions?.client_name || "—"}</td>
+      <td class="colLeft">${o.products_taken || "—"}</td>
+      <td>£${parseFloat(o.monthly_premium || 0).toFixed(2)}</td>
+      <td>${new Date(o.created_at).toLocaleDateString()}</td>
+    </tr>
+  `).join("");
+
+  outcomesArea.innerHTML = `
+    <div style="background:#fff;padding:20px;border-radius:8px;">
+      <h3>Outcomes Summary</h3>
+      <p><b>Total monthly premium ${scopeLabel}:</b> £${totalPremium.toFixed(2)}</p>
+      <div class="tableScrollWrap">
+        <table>
+          <thead><tr><th class="colLeft">Client Name</th><th class="colLeft">Products Taken</th><th>Monthly Premium</th><th>Date</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+async function loadUpcomingAppointments(column, id){
+  const appointmentsArea = document.getElementById("appointmentsArea");
+  appointmentsArea.innerHTML = "<p>Loading appointments...</p>";
+
+  const showAdviser = column === "company_id";
+  const today = new Date().toISOString().split("T")[0];
+
+  const { data, error } = await supabaseClient
+    .from("outcomes")
+    .select(`appointment_date, appointment_status, submission_id, submissions(client_name)${showAdviser ? ", advisers(adviser_name)" : ""}`)
+    .eq(column, id)
+    .in("appointment_status", ["booked", "follow_up_booked"])
+    .gte("appointment_date", today)
+    .order("appointment_date", { ascending: true });
+
+  if(error){
+    appointmentsArea.innerHTML = "<p>Error loading appointments: " + error.message + "</p>";
+    return;
+  }
+
+  if(!data || data.length === 0){
+    appointmentsArea.innerHTML = "<p>No upcoming appointments booked.</p>";
+    return;
+  }
+
+  let rows = data.map(a => `
+    <tr>
+      ${showAdviser ? `<td class="colLeft">${a.advisers?.adviser_name || "—"}</td>` : ""}
+      <td class="colLeft">${a.submissions?.client_name || "—"}</td>
+      <td>${a.appointment_status === "follow_up_booked" ? "Follow-Up" : "Initial"}</td>
+      <td>${new Date(a.appointment_date).toLocaleDateString()}</td>
+    </tr>
+  `).join("");
+
+  appointmentsArea.innerHTML = `
+    <div style="background:#fff;padding:20px;border-radius:8px;">
+      <h3>Upcoming Appointments</h3>
+      <div class="tableScrollWrap">
+        <table>
+          <thead><tr>${showAdviser ? '<th class="colLeft">Adviser</th>' : ""}<th class="colLeft">Client Name</th><th>Type</th><th>Appointment Date</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+/* Builds the last 12 months (current first) for the analytics month selector */
+function getMonthOptions(){
+  const options = [];
+  const now = new Date();
+  for(let i = 0; i < 12; i++){
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    options.push({ value, label });
+  }
+  return options;
+}
+
+/* Converts a "YYYY-MM" value into an inclusive start / exclusive end date range */
+function getMonthRange(monthValue){
+  const [year, month] = monthValue.split("-").map(Number);
+  const start = new Date(year, month - 1, 1).toISOString().split("T")[0];
+  const end = new Date(year, month, 1).toISOString().split("T")[0];
+  return { start, end };
+}
+
+async function loadAdviserComparison(companyId, monthValue, scopeAdviserId){
+  const comparisonArea = document.getElementById("comparisonArea");
+  if(!comparisonArea) return;
+  comparisonArea.innerHTML = "<p>Loading adviser comparison...</p>";
+
+  const { start, end } = getMonthRange(monthValue);
+
+  const advisersQuery = scopeAdviserId
+    ? supabaseClient.from("advisers").select("id, adviser_name").eq("id", scopeAdviserId)
+    : supabaseClient.from("advisers").select("id, adviser_name").eq("company_id", companyId).eq("active", true).order("adviser_name", { ascending: true });
+
+  const submissionsQuery = scopeAdviserId
+    ? supabaseClient.from("submissions").select("adviser_id, client_email, client_name").eq("adviser_id", scopeAdviserId).gte("created_at", start).lt("created_at", end)
+    : supabaseClient.from("submissions").select("adviser_id, client_email, client_name").eq("company_id", companyId).gte("created_at", start).lt("created_at", end);
+
+  const outcomesQuery = scopeAdviserId
+    ? supabaseClient.from("outcomes").select("id, adviser_id, appointment_status, monthly_premium").eq("adviser_id", scopeAdviserId).gte("created_at", start).lt("created_at", end)
+    : supabaseClient.from("outcomes").select("id, adviser_id, appointment_status, monthly_premium").eq("company_id", companyId).gte("created_at", start).lt("created_at", end);
+
+  const productsQuery = scopeAdviserId
+    ? supabaseClient.from("outcome_products").select("adviser_id, outcome_id").eq("adviser_id", scopeAdviserId)
+    : supabaseClient.from("outcome_products").select("adviser_id, outcome_id").eq("company_id", companyId);
+
+  const [advisersRes, submissionsRes, outcomesRes, productsRes] = await Promise.all([
+    advisersQuery, submissionsQuery, outcomesQuery, productsQuery
+  ]);
+
+  if(advisersRes.error || !advisersRes.data || advisersRes.data.length === 0){
+    comparisonArea.innerHTML = "";
+    return;
+  }
+
+  const submissions = submissionsRes.data || [];
+  const outcomes = outcomesRes.data || [];
+  const monthlyOutcomeIds = new Set(outcomes.map(o => o.id));
+  const products = (productsRes.data || []).filter(p => monthlyOutcomeIds.has(p.outcome_id));
+
+  let totals = { reports: 0, appointments: 0, policies: 0, premium: 0 };
+
+  let rows = advisersRes.data.map(a => {
+    // Count distinct CLIENTS, not raw submission rows — a client who goes
+    // back to Edit Details and regenerates their score (or has Model an
+    // Update run against them) previously counted as multiple "reports",
+    // inflating this figure and understating conversion percentages
+    // (Appointments/Reports, Cover Taken/Appointments) below.
+    const clientKeys = new Set(
+      submissions
+        .filter(s => s.adviser_id === a.id)
+        .map(s => (s.client_email || s.client_name || "").toLowerCase())
+        .filter(key => key !== "")
+    );
+    const reports = clientKeys.size;
+    const appointments = outcomes.filter(o => o.adviser_id === a.id && o.appointment_status === "booked").length;
+    const policies = products.filter(p => p.adviser_id === a.id).length;
+    const premium = outcomes.filter(o => o.adviser_id === a.id).reduce((sum, o) => sum + (parseFloat(o.monthly_premium) || 0), 0);
+
+    totals.reports += reports;
+    totals.appointments += appointments;
+    totals.policies += policies;
+    totals.premium += premium;
+
+    return `
+      <tr>
+        <td>${a.adviser_name}</td>
+        <td>${reports}</td>
+        <td>${appointments}</td>
+        <td>${policies}</td>
+        <td>£${premium.toFixed(2)}</td>
+      </tr>
+    `;
+  }).join("");
+
+  comparisonArea.innerHTML = `
+    <div style="background:#fff;padding:20px;border-radius:8px;">
+      <h3>${scopeAdviserId ? "Your Results" : "Adviser Comparison"}</h3>
+      <div class="tableScrollWrap">
+        <table>
+          <thead>
+            <tr><th class="colLeft">Adviser</th><th>Reports Completed</th><th>Appointments Booked</th><th>Policies Taken</th><th>Total Premiums</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+          <tfoot>
+            <tr>
+              <td class="colLeft">Total</td>
+              <td>${totals.reports}</td>
+              <td>${totals.appointments}</td>
+              <td>${totals.policies}</td>
+              <td>£${totals.premium.toFixed(2)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+/* ===== SUBSCRIPTION & ADVISER MANAGEMENT (new) ===== */
+const FREE_ADVISER_ALLOWANCE = 4;
+const BASE_PRICE = 40;
+const PER_ADVISER_PRICE = 10;
+
+async function loadSubscriptionSection(){
+  const area = document.getElementById("subscriptionArea");
+  area.innerHTML = "<p>Loading advisers...</p>";
+
+  const companyId = window.CURRENT_ROLE.companyId;
+
+  const { data, error } = await supabaseClient
+    .from("advisers")
+    .select("id, adviser_name, adviser_email, adviser_phone, booking_url, invite_status, active")
+    .eq("company_id", companyId)
+    .eq("active", true)
+    .order("adviser_name", { ascending: true });
+
+  if(error){
+    area.innerHTML = "<p>Error loading advisers: " + error.message + "</p>";
+    return;
+  }
+
+  const { data: companyData } = await supabaseClient
+    .from("companies")
+    .select("email_signature")
+    .eq("id", companyId)
+    .single();
+
+  const advisers = data || [];
+  const billableCount = Math.max(0, advisers.length - FREE_ADVISER_ALLOWANCE);
+  const totalPrice = BASE_PRICE + (billableCount * PER_ADVISER_PRICE);
+
+  const rows = advisers.map(a => `
+    <tr>
+      <td class="colLeft">${a.adviser_name}</td>
+      <td class="colLeft">${a.adviser_email}</td>
+      <td>${a.adviser_phone || "—"}</td>
+      <td>
+        <span class="inviteBadge ${a.invite_status || 'pending'}" id="inviteBadge_${a.id}">${(a.invite_status || 'pending')}</span>
+        ${a.invite_status === "failed" ? `<span class="resendLink" onclick="resendInvite(${a.id}, '${a.adviser_email}')">Resend</span>` : ""}
+      </td>
+      <td class="colLeft">
+        <button class="removeAdviserBtn" style="background:#132869;margin-right:6px;" onclick="editAdviser(${a.id}, '${a.adviser_name.replace(/'/g,"\\'")}', '${(a.adviser_phone||'').replace(/'/g,"\\'")}', '${(a.booking_url||'').replace(/'/g,"\\'")}')">Edit</button>
+        <button class="removeAdviserBtn" onclick="removeAdviser(${a.id}, '${a.adviser_name.replace(/'/g,"\\'")}')">Remove</button>
+      </td>
+    </tr>
+  `).join("");
+
+  const currentSignature = companyData?.email_signature || "";
+
+  area.innerHTML = `
+    <div style="background:#fff;padding:20px;border-radius:8px;">
+      <div class="priceSummary">
+        <b>${advisers.length} adviser${advisers.length === 1 ? "" : "s"}</b> — £${BASE_PRICE}/month base
+        ${billableCount > 0 ? ` + £${PER_ADVISER_PRICE} × ${billableCount} extra` : " (within your first " + FREE_ADVISER_ALLOWANCE + " advisers)"}
+        = <b>£${totalPrice}/month</b>
+      </div>
+
+      <div class="tableScrollWrap">
+        <table>
+          <thead><tr><th class="colLeft">Name</th><th class="colLeft">Email</th><th>Phone</th><th>Invite Status</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+
+      <div class="sectionHeading" id="addAdviserHeading">Add an Adviser</div>
+      <div class="addAdviserForm">
+        <input type="hidden" id="editingAdviserId" value="">
+        <label>Name</label>
+        <input type="text" id="newAdviserName" oninput="updateAdviserSlugPreview()">
+        <div id="newAdviserEmailWrap">
+          <label>Email</label>
+          <input type="email" id="newAdviserEmail">
+        </div>
+        <label>Phone</label>
+        <input type="tel" id="newAdviserPhone">
+        <label>Adviser's Calendar Booking URL</label>
+        <input type="url" id="newAdviserBookingUrl" placeholder="https://calendly.com/...">
+        <p id="adviserSlugPreviewWrap" style="font-size:12px;color:#888;margin:-6px 0 12px;">Their personal link will be: <span id="adviserSlugPreview">—</span></p>
+        <button class="primaryBtn" id="adviserFormSubmitBtn" onclick="addAdviser()">Add Adviser</button>
+        <button class="portalLinkBtn" id="adviserFormCancelBtn" style="display:none;margin-left:8px;" onclick="cancelEditAdviser()">Cancel</button>
+        <div id="addAdviserStatus" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="sectionHeading">Email Signature</div>
+      <p style="font-size:13px;color:#666;">
+        This is appended to every email sent to a client through the platform, after the adviser's "Kind Regards" sign-off — required for compliance (FCA/AR reference, registered office, confidentiality notice, etc.). Write it exactly as you want it to appear.
+      </p>
+      <textarea id="companyEmailSignature" style="width:100%;padding:8px;box-sizing:border-box;" rows="8">${currentSignature}</textarea>
+      <button class="primaryBtn" style="margin-top:10px;" onclick="saveEmailSignature()">Save Signature</button>
+      <div id="signatureStatus" style="margin-top:10px;"></div>
+
+      <div class="sectionHeading">Billing</div>
+      <p style="font-size:14px;color:#666;">Update your payment method or view past invoices via Stripe.</p>
+      <button class="portalLinkBtn" onclick="openBillingPortal()">Manage Payment Method &amp; Invoices</button>
+      <div id="portalStatus" style="margin-top:10px;"></div>
+    </div>
+  `;
+
+  refreshInviteStatuses(companyId);
+}
+
+async function saveEmailSignature(){
+  const statusEl = document.getElementById("signatureStatus");
+  const signature = document.getElementById("companyEmailSignature").value;
+
+  if(!signature.trim()){
+    statusEl.textContent = "Email signature cannot be blank — this is required for compliance.";
+    return;
+  }
+
+  statusEl.textContent = "Saving...";
+
+  try {
+    const res = await fetch("/.netlify/functions/manage-advisers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "update-signature",
+        companyId: window.CURRENT_ROLE.companyId,
+        accessToken: window.CURRENT_ROLE.accessToken,
+        emailSignature: signature
+      })
+    });
+    const result = await res.json();
+
+    if(!res.ok){
+      statusEl.textContent = "Error: " + (result.error || "Could not save signature.");
+      return;
+    }
+
+    statusEl.textContent = "✓ Signature saved.";
+  } catch(err){
+    statusEl.textContent = "Error: " + err.message;
+  }
+}
+
+async function refreshInviteStatuses(companyId){
+  try {
+    const res = await fetch("/.netlify/functions/manage-advisers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "check-status",
+        companyId: companyId,
+        accessToken: window.CURRENT_ROLE.accessToken
+      })
+    });
+    const result = await res.json();
+    if(!res.ok || !result.statuses) return;
+
+    Object.keys(result.statuses).forEach(adviserId => {
+      const badge = document.getElementById(`inviteBadge_${adviserId}`);
+      if(!badge) return;
+      const status = result.statuses[adviserId];
+      badge.textContent = status;
+      badge.className = `inviteBadge ${status}`;
+    });
+  } catch(err){
+    console.error("Could not refresh invite statuses:", err);
+  }
+}
+
+function slugify(name){
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+function updateAdviserSlugPreview(){
+  const name = document.getElementById("newAdviserName").value;
+  const preview = document.getElementById("adviserSlugPreview");
+
+  preview.textContent = name.trim() ? `/${slugify(name)}` : "—";
+}
+
+function editAdviser(adviserId, name, phone, bookingUrl){
+  document.getElementById("editingAdviserId").value = adviserId;
+  document.getElementById("newAdviserName").value = name;
+  document.getElementById("newAdviserPhone").value = phone;
+  document.getElementById("newAdviserBookingUrl").value = bookingUrl;
+
+  document.getElementById("addAdviserHeading").textContent = `Edit ${name}`;
+  document.getElementById("newAdviserEmailWrap").style.display = "none";
+  document.getElementById("adviserSlugPreviewWrap").style.display = "none";
+  document.getElementById("adviserFormSubmitBtn").textContent = "Save Changes";
+  document.getElementById("adviserFormCancelBtn").style.display = "inline-block";
+
+  document.getElementById("addAdviserHeading").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function cancelEditAdviser(){
+  loadSubscriptionSection();
+}
+
+async function addAdviser(){
+  const statusEl = document.getElementById("addAdviserStatus");
+  const editingId = document.getElementById("editingAdviserId").value;
+  const name = document.getElementById("newAdviserName").value.trim();
+  const phone = document.getElementById("newAdviserPhone").value.trim();
+  const bookingUrl = document.getElementById("newAdviserBookingUrl").value.trim();
+
+  if(editingId){
+    if(!name || !phone){
+      statusEl.textContent = "Name and phone are required.";
+      return;
+    }
+    statusEl.textContent = "Saving changes...";
+    try {
+      const res = await fetch("/.netlify/functions/manage-advisers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "edit",
+          companyId: window.CURRENT_ROLE.companyId,
+          accessToken: window.CURRENT_ROLE.accessToken,
+          adviserId: editingId,
+          adviserName: name,
+          adviserPhone: phone,
+          bookingUrl: bookingUrl || null
+        })
+      });
+      const result = await res.json();
+      if(!res.ok){
+        statusEl.textContent = "Error: " + (result.error || "Could not save changes.");
+        return;
+      }
+      loadSubscriptionSection();
+    } catch(err){
+      statusEl.textContent = "Error: " + err.message;
+    }
+    return;
+  }
+
+  const emailVal = document.getElementById("newAdviserEmail").value.trim();
+  const slug = slugify(name);
+
+  if(!name || !emailVal || !phone || !slug){
+    statusEl.textContent = "Name, email, and phone are all required.";
+    return;
+  }
+
+  statusEl.textContent = "Adding adviser...";
+
+  try {
+    const res = await fetch("/.netlify/functions/manage-advisers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "add",
+        companyId: window.CURRENT_ROLE.companyId,
+        accessToken: window.CURRENT_ROLE.accessToken,
+        adviserName: name,
+        adviserEmail: emailVal,
+        adviserPhone: phone,
+        adviserSlug: slug,
+        bookingUrl: bookingUrl || null
+      })
+    });
+    const result = await res.json();
+
+    if(!res.ok){
+      statusEl.textContent = "Error: " + (result.error || "Could not add adviser.");
+      return;
+    }
+
+    statusEl.textContent = "✓ Adviser added.";
+    loadSubscriptionSection();
+  } catch(err){
+    statusEl.textContent = "Error: " + err.message;
+  }
+}
+
+async function removeAdviser(adviserId, adviserName){
+  if(!confirm(`Remove ${adviserName}? Their existing submissions and outcomes will be kept, but they'll lose dashboard access.`)) return;
+
+  try {
+    const res = await fetch("/.netlify/functions/manage-advisers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "remove",
+        companyId: window.CURRENT_ROLE.companyId,
+        accessToken: window.CURRENT_ROLE.accessToken,
+        adviserId: adviserId
+      })
+    });
+    const result = await res.json();
+
+    if(!res.ok){
+      alert("Error: " + (result.error || "Could not remove adviser."));
+      return;
+    }
+
+    loadSubscriptionSection();
+  } catch(err){
+    alert("Error: " + err.message);
+  }
+}
+
+async function resendInvite(adviserId, adviserEmail){
+  try {
+    const res = await fetch("/.netlify/functions/manage-advisers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "resend-invite",
+        companyId: window.CURRENT_ROLE.companyId,
+        accessToken: window.CURRENT_ROLE.accessToken,
+        adviserId: adviserId,
+        adviserEmail: adviserEmail
+      })
+    });
+    const result = await res.json();
+
+    if(!res.ok){
+      alert("Error: " + (result.error || "Could not resend invite."));
+      return;
+    }
+
+    loadSubscriptionSection();
+  } catch(err){
+    alert("Error: " + err.message);
+  }
+}
+
+async function openBillingPortal(){
+  const statusEl = document.getElementById("portalStatus");
+  statusEl.textContent = "Opening billing portal...";
+
+  try {
+    const res = await fetch("/.netlify/functions/create-portal-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        companyId: window.CURRENT_ROLE.companyId,
+        accessToken: window.CURRENT_ROLE.accessToken
+      })
+    });
+    const result = await res.json();
+
+    if(!res.ok){
+      statusEl.textContent = "Error: " + (result.error || "Could not open billing portal.");
+      return;
+    }
+
+    window.location.href = result.url;
+  } catch(err){
+    statusEl.textContent = "Error: " + err.message;
+  }
+}
+
+async function loadConversionStats(companyId, monthValue, scopeAdviserId){
+  const funnelArea = document.getElementById("funnelArea");
+  if(!funnelArea) return;
+  funnelArea.innerHTML = "<p>Loading conversion statistics...</p>";
+
+  const { start, end } = getMonthRange(monthValue);
+
+  const advisersQuery = scopeAdviserId
+    ? supabaseClient.from("advisers").select("id, adviser_name").eq("id", scopeAdviserId)
+    : supabaseClient.from("advisers").select("id, adviser_name").eq("company_id", companyId).eq("active", true).order("adviser_name", { ascending: true });
+
+  const submissionsQuery = scopeAdviserId
+    ? supabaseClient.from("submissions").select("adviser_id, client_email, client_name").eq("adviser_id", scopeAdviserId).gte("created_at", start).lt("created_at", end)
+    : supabaseClient.from("submissions").select("adviser_id, client_email, client_name").eq("company_id", companyId).gte("created_at", start).lt("created_at", end);
+
+  const outcomesQuery = scopeAdviserId
+    ? supabaseClient.from("outcomes").select("id, adviser_id, appointment_status").eq("adviser_id", scopeAdviserId).gte("created_at", start).lt("created_at", end)
+    : supabaseClient.from("outcomes").select("id, adviser_id, appointment_status").eq("company_id", companyId).gte("created_at", start).lt("created_at", end);
+
+  const productsQuery = scopeAdviserId
+    ? supabaseClient.from("outcome_products").select("adviser_id, outcome_id").eq("adviser_id", scopeAdviserId)
+    : supabaseClient.from("outcome_products").select("adviser_id, outcome_id").eq("company_id", companyId);
+
+  const [advisersRes, submissionsRes, outcomesRes, productsRes] = await Promise.all([
+    advisersQuery, submissionsQuery, outcomesQuery, productsQuery
+  ]);
+
+  if(advisersRes.error || !advisersRes.data || advisersRes.data.length === 0){
+    funnelArea.innerHTML = "";
+    return;
+  }
+
+  const submissions = submissionsRes.data || [];
+  const outcomes = outcomesRes.data || [];
+  const monthlyOutcomeIds = new Set(outcomes.map(o => o.id));
+  const products = (productsRes.data || []).filter(p => monthlyOutcomeIds.has(p.outcome_id));
+
+  const pct = (num, denom) => denom > 0 ? ((num / denom) * 100).toFixed(0) + "%" : "—";
+
+  let rows = advisersRes.data.map(a => {
+    // Distinct clients, not raw submission rows — see loadAdviserComparison()
+    // for the full reasoning. Without this, a client who edited their
+    // details and regenerated their score counted as multiple reports,
+    // artificially depressing the Appointments/Cover Taken percentages.
+    const clientKeys = new Set(
+      submissions
+        .filter(s => s.adviser_id === a.id)
+        .map(s => (s.client_email || s.client_name || "").toLowerCase())
+        .filter(key => key !== "")
+    );
+    const reports = clientKeys.size;
+    const appointments = outcomes.filter(o => o.adviser_id === a.id && o.appointment_status === "booked").length;
+    const coverTakenOutcomeIds = new Set(products.filter(p => p.adviser_id === a.id).map(p => p.outcome_id));
+    const coverTaken = coverTakenOutcomeIds.size;
+
+    return `
+      <tr>
+        <td>${a.adviser_name}</td>
+        <td>${reports}</td>
+        <td>${appointments} (${pct(appointments, reports)})</td>
+        <td>${coverTaken} (${pct(coverTaken, appointments)})</td>
+      </tr>
+    `;
+  }).join("");
+
+  funnelArea.innerHTML = `
+    <div style="background:#fff;padding:20px;border-radius:8px;">
+      <h3>${scopeAdviserId ? "Your Conversion Stats" : "Conversion Statistics"}</h3>
+      <p style="font-size:13px;color:#777;">Reports Completed → Appointments Booked → Cover Taken (initial appointments only — follow-ups excluded)</p>
+      <div class="tableScrollWrap">
+        <table>
+          <thead>
+            <tr><th class="colLeft">Adviser</th><th>Reports</th><th>Appointments<span class="colSub">(% of Reports)</span></th><th>Cover Taken<span class="colSub">(% of Appointments)</span></th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+/* ===== YOUR WIDGET (new) ===== */
+const WIDGET_BASE_URL = "https://app.resiliencetool.co.uk";
+
+function buildWidgetBlock(adviserName, companySlug, adviserSlug){
+  const blockId = `widget_${adviserSlug}`;
+  const hostedLink = `${WIDGET_BASE_URL}/app/${companySlug}/${adviserSlug}`;
+  const embedSnippet = `<div id="resilience-tool" data-client="${adviserSlug}"></div>\n<script src="${WIDGET_BASE_URL}/widget.js"><\/script>`;
+  const iframeSnippet = `<iframe src="${hostedLink}" style="width:100%;height:800px;border:none;"></iframe>`;
+
+  return `
+    <div class="widgetAdviserBlock">
+      <h4>${adviserName}</h4>
+
+      <div class="snippetLabel">Hosted Link</div>
+      <div class="snippetBox" id="${blockId}_link">${hostedLink}</div>
+      <button class="copyBtn" onclick="copySnippet('${blockId}_link')">Copy Link</button>
+
+      <div class="snippetLabel">Embed Snippet</div>
+      <div class="snippetBox" id="${blockId}_embed">${embedSnippet.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
+      <button class="copyBtn" onclick="copySnippet('${blockId}_embed')">Copy Embed Snippet</button>
+
+      <div class="snippetLabel">Iframe Snippet</div>
+      <div class="snippetBox" id="${blockId}_iframe">${iframeSnippet.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
+      <button class="copyBtn" onclick="copySnippet('${blockId}_iframe')">Copy Iframe Snippet</button>
+
+      <p style="font-size:12px;color:#888;margin-top:14px;">
+        If your website has a sticky/fixed header, you may notice the page scrolling slightly under it as clients move through steps. This is a common fix on most site builders — a small CSS rule (<code>scroll-padding-top</code>) usually resolves it. Contact us if you'd like help.
+      </p>
+    </div>
+  `;
+}
+
+async function loadWidgetSection(){
+  const area = document.getElementById("widgetArea");
+  area.innerHTML = "<p>Loading...</p>";
+
+  const companySlug = window.CURRENT_ROLE.companySlug;
+
+  if(!window.CURRENT_ROLE.isCompany){
+    // Adviser login — just their own block
+    area.innerHTML = buildWidgetBlock(pageTitle.textContent.replace("'s Dashboard", ""), companySlug, window.CURRENT_ROLE.adviserSlug);
+    return;
+  }
+
+  // Company login — one block per active adviser
+  const { data, error } = await supabaseClient
+    .from("advisers")
+    .select("adviser_name, adviser_slug")
+    .eq("company_id", window.CURRENT_ROLE.companyId)
+    .eq("active", true)
+    .order("adviser_name", { ascending: true });
+
+  if(error){
+    area.innerHTML = "<p>Error loading advisers: " + error.message + "</p>";
+    return;
+  }
+
+  if(!data || data.length === 0){
+    area.innerHTML = "<p>No active advisers yet.</p>";
+    return;
+  }
+
+  area.innerHTML = data.map(a => buildWidgetBlock(a.adviser_name, companySlug, a.adviser_slug)).join("");
+}
+
+function copySnippet(elementId){
+  const el = document.getElementById(elementId);
+  const text = el.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const originalBg = el.style.background;
+    el.style.background = "#d4edda";
+    setTimeout(() => { el.style.background = originalBg; }, 500);
+  }).catch(() => {
+    alert("Could not copy — please select and copy manually.");
+  });
+}
+
+async function loadScoreComparison(column, id){
+  const area = document.getElementById("scoreComparisonArea");
+  area.innerHTML = "<p>Loading score comparison...</p>";
+
+  const showAdviser = column === "company_id";
+
+  const { data, error } = await supabaseClient
+    .from("submissions")
+    .select(`id, client_name, client_email, score, created_at, parent_submission_id, report_html${showAdviser ? ", advisers(adviser_name)" : ""}`)
+    .eq(column, id)
+    .order("created_at", { ascending: false });
+
+  if(error){
+    area.innerHTML = "<p>Error loading score comparison: " + error.message + "</p>";
+    return;
+  }
+
+  if(!data || data.length === 0){
+    area.innerHTML = "<p>No submissions yet.</p>";
+    return;
+  }
+
+  const byId = {};
+  data.forEach(s => { byId[s.id] = s; });
+
+  window.SUBMISSIONS_DATA = window.SUBMISSIONS_DATA || [];
+  data.forEach(s => {
+    if(!window.SUBMISSIONS_DATA.some(existing => existing.id === s.id)){
+      window.SUBMISSIONS_DATA.push(s);
+    }
+  });
+
+  // A "leaf" is a submission that (a) has a parent (i.e. it's itself an
+  // update) and (b) is not itself the parent of any other submission —
+  // meaning it's the LATEST version in its chain.
+  const isParent = new Set(data.map(s => s.parent_submission_id).filter(Boolean));
+  const leaves = data.filter(s => s.parent_submission_id && !isParent.has(s.id));
+
+  if(leaves.length === 0){
+    area.innerHTML = `
+      <div style="background:#fff;padding:20px;border-radius:8px;">
+        <h3>Score Comparison</h3>
+        <p style="color:#666;">No clients have had their assessment updated yet. Once you use "Generate Updated Report" on a submission, the original and updated scores will appear here.</p>
+      </div>
+    `;
+    return;
+  }
+
+  function findRoot(submission){
+    let current = submission;
+    while(current.parent_submission_id && byId[current.parent_submission_id]){
+      current = byId[current.parent_submission_id];
+    }
+    return current;
+  }
+
+  let rows = leaves.map(leaf => {
+    const root = findRoot(leaf);
+    const change = (leaf.score || 0) - (root.score || 0);
+    const changeClass = change > 0 ? "scoreUp" : change < 0 ? "scoreDown" : "scoreSame";
+    const changeText = change > 0 ? `+${change}` : change === 0 ? "—" : change;
+
+    return `
+      <tr>
+        ${showAdviser ? `<td class="colLeft">${leaf.advisers?.adviser_name || "—"}</td>` : ""}
+        <td class="colLeft">${leaf.client_name || "—"}</td>
+        <td>${root.score != null ? root.score : "—"}</td>
+        <td>${leaf.score != null ? leaf.score : "—"}</td>
+        <td class="${changeClass}">${changeText}</td>
+        <td>${new Date(leaf.created_at).toLocaleDateString()}</td>
+        <td><a href="#" onclick="viewSubmission(${leaf.id}); return false;">View</a></td>
+        <td>
+          <button class="copyBtn" onclick="openEmailClient(${leaf.id})">Email to Client</button>
+          <div id="sendReportStatus_${leaf.id}" style="font-size:12px;margin-top:4px;"></div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  area.innerHTML = `
+    <div style="background:#fff;padding:20px;border-radius:8px;">
+      <h3>Score Comparison</h3>
+      <p style="font-size:13px;color:#777;">Original score vs latest updated score, for clients who've had their assessment remodelled.</p>
+      <div class="tableScrollWrap">
+        <table>
+          <thead>
+            <tr>${showAdviser ? '<th class="colLeft">Adviser</th>' : ""}<th class="colLeft">Client</th><th>Original Score</th><th>Latest Score</th><th>Change</th><th>Updated</th><th>Report</th><th>Email</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+document.getElementById("refreshBtn").addEventListener("click", init);
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  await supabaseClient.auth.signOut();
+  window.location.href = "/dashboard-login.html";
+});
+
+init();
+</script>
+
+</body>
+</html>

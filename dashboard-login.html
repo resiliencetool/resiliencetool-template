@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ResilienceTool — Dashboard Login</title>
+  <meta charset="utf-8">
+  <style>
+    body{font-family:Arial,sans-serif;background:#f4f4f4;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}
+    .card{background:#fff;padding:30px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.1);width:90%;max-width:320px;box-sizing:border-box;}
+    .brandRow{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:18px;}
+    .brandName{font-size:19px;font-weight:700;color:#132869;}
+    h2{margin-top:0;font-size:17px;text-align:center;color:#333;}
+    input{width:100%;padding:10px;margin-top:8px;margin-bottom:14px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;}
+    button{width:100%;padding:12px;background:#132869;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer;}
+    #message{margin-top:12px;font-size:14px;color:#b00020;}
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="brandRow">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2L4 5V11C4 16 7.5 20 12 22C16.5 20 20 16 20 11V5L12 2Z" fill="#132869"/>
+      <rect x="8" y="9" width="8" height="1.4" rx="0.7" fill="#fff"/>
+      <rect x="8" y="12" width="8" height="1.4" rx="0.7" fill="#fff"/>
+      <rect x="8" y="15" width="5" height="1.4" rx="0.7" fill="#fff"/>
+    </svg>
+    <span class="brandName">ResilienceTool</span>
+  </div>
+  <div id="formArea">
+    <h2>Loading...</h2>
+  </div>
+  <div id="message"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "__SUPABASE_URL__";
+const SUPABASE_KEY = "__SUPABASE_ANON_KEY__";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const formArea = document.getElementById("formArea");
+const message = document.getElementById("message");
+async function init(){
+  // Kept as a belt-and-braces listener — harmless if it never fires, and
+  // covers the case where Supabase's own timing does emit this event
+  // before the direct hash check below has a chance to run.
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if(event === "PASSWORD_RECOVERY"){
+      showSetPasswordForm();
+    }
+  });
+
+  // Both password-reset and adviser-invite links need the same "Set Your
+  // Password" step, and both carry their own type marker (type=recovery /
+  // type=invite) in the URL hash at the moment of the callback — checked
+  // directly here, rather than relying solely on Supabase's PASSWORD_RECOVERY
+  // auth event. Supabase's own team has confirmed SIGNED_IN can fire before
+  // PASSWORD_RECOVERY, and invite links aren't guaranteed to fire
+  // PASSWORD_RECOVERY at all (see supabase/supabase#45210) — without this
+  // direct check, a brand-new invited adviser could fall straight through to
+  // getSession() below and land in the dashboard having never set a password.
+  //
+  // Calling showSetPasswordForm() directly here (rather than waiting for an
+  // event) is safe even though the session may not have finished parsing
+  // yet — showing the form is just a UI change with no session dependency.
+  // The session is only actually needed later, inside handleSetPassword(),
+  // by which point the person has taken the time to read the form and type
+  // a password — comfortably long enough for Supabase's client to have
+  // finished establishing the session from the URL in the background.
+  const isRecoveryOrInviteLink = window.location.hash.includes("type=recovery") || window.location.hash.includes("type=invite");
+
+  if(isRecoveryOrInviteLink){
+    showSetPasswordForm();
+    return;
+  }
+
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if(session){
+    window.location.href = "/dashboard.html";
+  } else {
+    showLoginForm();
+  }
+}
+function showLoginForm(){
+  formArea.innerHTML = `
+    <h2>Dashboard Login</h2>
+    <input id="email" type="email" placeholder="Email address">
+    <input id="password" type="password" placeholder="Password">
+    <button id="loginBtn">Log In</button>
+    <p style="margin-top:10px;text-align:center;">
+      <a href="#" id="forgotLink" style="font-size:13px;color:#132869;">Forgot password?</a>
+    </p>
+  `;
+  document.getElementById("loginBtn").addEventListener("click", handleLogin);
+  document.getElementById("forgotLink").addEventListener("click", handleForgotPassword);
+}
+function showSetPasswordForm(){
+  formArea.innerHTML = `
+    <h2>Set Your Password</h2>
+    <input id="newPassword" type="password" placeholder="Choose a password">
+    <button id="setPasswordBtn">Set Password</button>
+  `;
+  document.getElementById("setPasswordBtn").addEventListener("click", handleSetPassword);
+}
+async function handleLogin(){
+  message.textContent = "";
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if(error){
+    message.textContent = "Login failed: " + error.message;
+    return;
+  }
+  window.location.href = "/dashboard.html";
+}
+async function handleForgotPassword(e){
+  e.preventDefault();
+  message.textContent = "";
+  const email = document.getElementById("email").value.trim();
+  if(!email){
+    message.textContent = "Enter your email address above first, then click 'Forgot password?'";
+    return;
+  }
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+    redirectTo: "https://app.resiliencetool.co.uk/dashboard-login.html"
+  });
+  if(error){
+    message.textContent = "Error: " + error.message;
+    return;
+  }
+  message.style.color = "#1e8449";
+  message.textContent = "Check your email for a password reset link.";
+}
+async function handleSetPassword(){
+  message.textContent = "";
+  const newPassword = document.getElementById("newPassword").value;
+  if(newPassword.length < 8){
+    message.textContent = "Password must be at least 8 characters.";
+    return;
+  }
+  const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+  if(error){
+    message.textContent = "Could not set password: " + error.message;
+    return;
+  }
+  window.location.href = "/dashboard.html";
+}
+init();
+</script>
+</body>
+</html>
