@@ -2,7 +2,7 @@
 // [build] command). Reads the real Supabase URL and anon/publishable
 // key from this site's own environment variables — set once by the
 // firm during their "Deploy to Netlify" flow — and writes them into
-// the four browser-facing files, replacing the placeholder tokens
+// the three browser-facing files, replacing the placeholder tokens
 // left in the template source.
 //
 // This exists because browser-facing HTML/JS cannot read Netlify's
@@ -36,10 +36,16 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   process.exit(1);
 }
 
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║  CHANGED: FILES_TO_PATCH                                         ║
+// ║  "signup.html" has been REMOVED from this list. That file no     ║
+// ║  longer exists in the template, and this script fails the       ║
+// ║  build if any listed file is missing. Leaving it in would make   ║
+// ║  every brand-new firm's first deploy fail.                       ║
+// ╚══════════════════════════════════════════════════════════════════╝
 const FILES_TO_PATCH = [
   "dashboard.html",
   "dashboard-login.html",
-  "signup.html",
   "widget.js"
 ];
 
