@@ -289,6 +289,89 @@ const SUPABASE_URL = "__SUPABASE_URL__";
 const SUPABASE_KEY = "__SUPABASE_ANON_KEY__";
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+/* ===== SAFETY HELPERS (new) =====
+   Everything that reaches this page from the database — client names and
+   emails, adviser details, notes, the saved report itself — was previously
+   inserted into the page as raw HTML. Anyone able to submit an assessment
+   (the widget's save endpoint is public) could put HTML or script in those
+   fields and have it run in an adviser's or owner's browser, which holds
+   their login session. These helpers make that impossible:
+     esc()              turns text into harmless text before it goes in HTML
+     safeHttpUrl()      only lets real web addresses through
+     sanitizeReportHtml() keeps the report's normal layout (plain tags, class
+                        and style) and removes everything else */
+function esc(v){
+  return String(v == null ? "" : v)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function safeHttpUrl(v){
+  return (typeof v === "string" && /^https?:\/\//i.test(v.trim())) ? v.trim() : "";
+}
+
+function safeInviteStatus(v){
+  return ["pending", "sent", "failed", "active"].includes(v) ? v : "pending";
+}
+
+const REPORT_ALLOWED_TAGS = new Set([
+  "div","span","p","br","b","strong","i","em","u","small","sup","sub",
+  "h1","h2","h3","h4","h5","h6","hr","ul","ol","li",
+  "table","thead","tbody","tfoot","tr","th","td"
+]);
+const REPORT_REMOVE_WITH_CONTENT = new Set([
+  "script","style","iframe","frame","frameset","object","embed","applet",
+  "link","meta","base","form","input","select","textarea","button",
+  "svg","math","template","noscript","audio","video","source","img","picture"
+]);
+const REPORT_ALLOWED_IDS = new Set(["protectionAnalysisHeading","budgetBreakdownHeading"]);
+
+function sanitizeReportHtml(html){
+  const doc = new DOMParser().parseFromString("<!DOCTYPE html><html><body>" + String(html || "") + "</body></html>", "text/html");
+
+  (function clean(node){
+    Array.from(node.childNodes).forEach(child => {
+      if(child.nodeType === 3) return;
+      if(child.nodeType !== 1){ child.remove(); return; }
+
+      const tag = child.tagName.toLowerCase();
+
+      if(REPORT_REMOVE_WITH_CONTENT.has(tag)){ child.remove(); return; }
+
+      if(!REPORT_ALLOWED_TAGS.has(tag)){
+        clean(child);
+        while(child.firstChild){ node.insertBefore(child.firstChild, child); }
+        child.remove();
+        return;
+      }
+
+      Array.from(child.attributes).forEach(attr => {
+        const name = attr.name.toLowerCase();
+        if(name === "class") return;
+        if(name === "id" && REPORT_ALLOWED_IDS.has(attr.value)) return;
+        if(name === "style"){
+          const cleaned = attr.value
+            .replace(/url\s*\([^)]*\)/gi, "")
+            .replace(/expression\s*\([^)]*\)/gi, "")
+            .replace(/@import[^;]*/gi, "")
+            .replace(/behavior\s*:[^;]*/gi, "")
+            .replace(/position\s*:\s*(fixed|absolute|sticky)[^;]*;?/gi, "");
+          child.setAttribute("style", cleaned);
+          return;
+        }
+        child.removeAttribute(attr.name);
+      });
+
+      clean(child);
+    });
+  })(doc.body);
+
+  return doc.body.innerHTML;
+}
+
 const statusEl = document.getElementById("status");
 const pageTitle = document.getElementById("pageTitle");
 const cardOverview = document.getElementById("cardOverview");
@@ -441,7 +524,7 @@ async function loadAdviserFilterOptions(companyId){
   if(error || !data) return;
 
   select.innerHTML = `<option value="">Overview (all advisers)</option>` +
-    data.map(a => `<option value="${a.id}">${a.adviser_name}</option>`).join("");
+    data.map(a => `<option value="${a.id}">${esc(a.adviser_name)}</option>`).join("");
 
   select.onchange = () => {
     const selectedId = select.value || null;
@@ -598,7 +681,7 @@ async function loadSubmissions(column, id){
   const { data, error } = await query;
 
   if(error){
-    submissionsArea.innerHTML = "<p>Error loading submissions: " + error.message + "</p>";
+    submissionsArea.innerHTML = "<p>Error loading submissions: " + esc(error.message) + "</p>";
     return;
   }
 
@@ -631,8 +714,8 @@ async function loadSubmissions(column, id){
     const s = group.latest;
     const mainRow = `
       <tr>
-        ${showAdviser ? `<td>${s.advisers?.adviser_name || "—"}</td>` : ""}
-        <td>${s.client_name || "—"}</td>
+        ${showAdviser ? `<td>${esc(s.advisers?.adviser_name || "—")}</td>` : ""}
+        <td>${esc(s.client_name || "—")}</td>
         <td>${s.score != null ? s.score : "—"}</td>
         <td><span class="hideOnMobile">${formatSubmissionTimestamp(s.created_at)}</span><span class="showOnMobileOnly">${new Date(s.created_at).toLocaleDateString()}</span></td>
         <td id="reassignCell_${s.id}"><a href="#" onclick="viewSubmission(${s.id}); return false;">View</a>${showAdviser ? ` | <a href="#" onclick="reassignSubmission(${s.id}); return false;">Reassign</a>` : ""}</td>
@@ -661,8 +744,8 @@ async function loadSubmissions(column, id){
     // impossible, rather than something to keep chasing with CSS.
     const historyRows = group.history.map(h => `
       <tr class="${historyId}" style="display:none;background:#fffbea;">
-        ${showAdviser ? `<td>${h.advisers?.adviser_name || "—"}</td>` : ""}
-        <td>${h.client_name || "—"}</td>
+        ${showAdviser ? `<td>${esc(h.advisers?.adviser_name || "—")}</td>` : ""}
+        <td>${esc(h.client_name || "—")}</td>
         <td>${h.score != null ? h.score : "—"}</td>
         <td><span class="hideOnMobile">${formatSubmissionTimestamp(h.created_at)}</span><span class="showOnMobileOnly">${new Date(h.created_at).toLocaleDateString()}</span></td>
         <td id="reassignCell_${h.id}"><a href="#" onclick="viewSubmission(${h.id}); return false;">View</a>${showAdviser ? ` | <a href="#" onclick="reassignSubmission(${h.id}); return false;">Reassign</a>` : ""}</td>
@@ -708,7 +791,7 @@ async function reassignSubmission(submissionId){
   const cell = document.getElementById(`reassignCell_${submissionId}`);
   if(!cell) return;
 
-  const options = advisers.map(a => `<option value="${a.id}">${a.adviser_name}</option>`).join("");
+  const options = advisers.map(a => `<option value="${a.id}">${esc(a.adviser_name)}</option>`).join("");
 
   cell.innerHTML = `
     <select id="reassignSelect_${submissionId}" style="padding:4px;font-size:13px;">${options}</select>
@@ -773,7 +856,11 @@ function toggleSubmissionHistory(historyId){
   });
 }
 
-async function requestGdprDeletion(id, clientEmail){
+async function requestGdprDeletion(id){
+  // The email is looked up here rather than being pasted into the button's
+  // inline script, where a crafted email could break out of the string.
+  const sub = (window.SUBMISSIONS_DATA || []).find(s => s.id === id);
+  const clientEmail = sub ? (sub.client_email || "") : "";
   if(!clientEmail){
     alert("This submission has no client email on file — cannot look up all their records safely. Contact support if this client genuinely needs deleting.");
     return;
@@ -983,10 +1070,10 @@ function riskColour(score){
 }
 
 function stripReportButtons(html){
-  const temp = document.createElement("div");
-  temp.innerHTML = html || "";
-  temp.querySelectorAll("button").forEach(btn => btn.remove());
-  return temp.innerHTML;
+  // Previously this parsed the saved report straight into a live element,
+  // which lets any script or image handler in it run immediately. It now
+  // hands the report to sanitizeReportHtml(), which also removes buttons.
+  return sanitizeReportHtml(html);
 }
 
 /* Walks the full parent_submission_id chain for a submission — both up to
@@ -1076,8 +1163,8 @@ function viewSubmission(id){
 
   detailArea.innerHTML = `
     <div style="background:#fff;padding:20px;border-radius:8px;margin-top:10px;">
-      <h3 style="text-align:center;">Report for ${submission.client_name || "Client"}</h3>
-      ${submission.client_email ? `<p style="text-align:center;color:#666;margin-top:-8px;">${submission.client_email}</p>` : ""}
+      <h3 style="text-align:center;">Report for ${esc(submission.client_name || "Client")}</h3>
+      ${submission.client_email ? `<p style="text-align:center;color:#666;margin-top:-8px;">${esc(submission.client_email)}</p>` : ""}
       ${scoreHtml}
       <div style="max-height:400px;overflow:auto;border:1px solid #eee;padding:10px;margin-bottom:20px;">
         ${stripReportButtons(submission.report_html)}
@@ -1086,7 +1173,7 @@ function viewSubmission(id){
         <button onclick="downloadReport(${id})" class="primaryBtn">Download Report</button>
         ${canLogOutcome ? `<button onclick="tryWhatIf(${id})" class="primaryBtn" style="background:#7c5cbf;">Try What-If Scenarios</button>` : ""}
         ${canLogOutcome ? `<button onclick="openEmailClient(${id})" class="primaryBtn" style="background:#1e8449;">Email Report to Client</button>` : ""}
-        ${window.CURRENT_ROLE.isCompany ? `<button onclick="requestGdprDeletion(${id}, '${(submission.client_email || "").replace(/'/g,"\\'")}')" class="primaryBtn" style="background:#b00020;">Delete All Client Data (GDPR)</button>` : ""}
+        ${window.CURRENT_ROLE.isCompany ? `<button onclick="requestGdprDeletion(${id})" class="primaryBtn" style="background:#b00020;">Delete All Client Data (GDPR)</button>` : ""}
       </div>
       <div id="sendReportStatus_${id}" style="margin-top:8px;font-size:13px;"></div>
 
@@ -1541,19 +1628,19 @@ async function loadOutcomeHistory(submissionId){
 
   document.getElementById("outcomeHistory").innerHTML = data.map(o => {
     const productLines = (o.outcome_products || []).map(p => {
-      let detail = `${PRODUCT_LABELS[p.product_type] || p.product_type}`;
+      let detail = `${esc(PRODUCT_LABELS[p.product_type] || p.product_type)}`;
       if(p.product_type === "ip"){
-        detail += ` — £${p.cover_amount || 0} to age ${p.to_age || "—"}, ${p.deferred_period || "—"} deferred, ${CLAIM_PERIODS.find(c=>c.value===p.claim_period)?.label || p.claim_period || "—"} claim`;
+        detail += ` — £${esc(p.cover_amount || 0)} to age ${esc(p.to_age || "—")}, ${esc(p.deferred_period || "—")} deferred, ${esc(CLAIM_PERIODS.find(c=>c.value===p.claim_period)?.label || p.claim_period || "—")} claim`;
       } else if(p.product_type === "life_ci"){
         // Life and CIC portions can have different sum assured/terms even
         // under one shared premium — shown separately here for clarity.
-        detail += ` — Life £${p.cover_amount || 0} over ${p.term || "—"} years, CIC £${p.ci_cover_amount || p.cover_amount || 0} over ${p.ci_term || p.term || "—"} years`;
+        detail += ` — Life £${esc(p.cover_amount || 0)} over ${esc(p.term || "—")} years, CIC £${esc(p.ci_cover_amount || p.cover_amount || 0)} over ${esc(p.ci_term || p.term || "—")} years`;
       } else {
-        detail += ` — £${p.cover_amount || 0} over ${p.term || "—"} years`;
+        detail += ` — £${esc(p.cover_amount || 0)} over ${esc(p.term || "—")} years`;
       }
-      detail += ` — £${p.monthly_premium || 0}/mo`;
+      detail += ` — £${esc(p.monthly_premium || 0)}/mo`;
       if(p.replaces_category){
-        detail += ` <i>(replaces ${PRODUCT_LABELS[p.replaces_category] || p.replaces_category})</i>`;
+        detail += ` <i>(replaces ${esc(PRODUCT_LABELS[p.replaces_category] || p.replaces_category)})</i>`;
       } else {
         detail += ` <i>(new/additional)</i>`;
       }
@@ -1563,12 +1650,12 @@ async function loadOutcomeHistory(submissionId){
     return `
       <div class="outcomeEntry">
         <small>${new Date(o.created_at).toLocaleString()}</small>
-        ${o.appointment_status === "booked" ? `<span class="apptBadge">Appointment Booked ${o.appointment_date || ""}</span>` : ""}
-        ${o.appointment_status === "follow_up_booked" ? `<span class="followUpBadge">Follow-Up Appointment Booked ${o.appointment_date || ""}</span>` : ""}
+        ${o.appointment_status === "booked" ? `<span class="apptBadge">Appointment Booked ${esc(o.appointment_date || "")}</span>` : ""}
+        ${o.appointment_status === "follow_up_booked" ? `<span class="followUpBadge">Follow-Up Appointment Booked ${esc(o.appointment_date || "")}</span>` : ""}
         ${o.appointment_status === "refused" ? `<span class="refusedBadge">Appointment Declined</span>` : ""}
         ${o.no_cover_taken ? `<span class="noCoverBadge">No Cover Taken</span>` : ""}
         ${productLines}
-        ${o.notes ? `<p>${o.notes}</p>` : ""}
+        ${o.notes ? `<p>${esc(o.notes)}</p>` : ""}
         <div style="margin-top:6px;">
           <a href="#" style="font-size:12px;color:#b00020;" onclick="deleteOutcome(${o.id}, ${submissionId}); return false;">Delete this outcome</a>
         </div>
@@ -1719,27 +1806,28 @@ async function downloadReport(id){
   ` : "";
 
   let contactLines = [];
-  if(adviserName) contactLines.push(`<div><strong>Adviser Name:</strong> ${adviserName}</div>`);
-  if(adviserEmail) contactLines.push(`<div><strong>Adviser Email Address:</strong> ${adviserEmail}</div>`);
-  if(adviserPhone) contactLines.push(`<div><strong>Adviser Phone Number:</strong> ${adviserPhone}</div>`);
+  if(adviserName) contactLines.push(`<div><strong>Adviser Name:</strong> ${esc(adviserName)}</div>`);
+  if(adviserEmail) contactLines.push(`<div><strong>Adviser Email Address:</strong> ${esc(adviserEmail)}</div>`);
+  if(adviserPhone) contactLines.push(`<div><strong>Adviser Phone Number:</strong> ${esc(adviserPhone)}</div>`);
   const adviserContactHtml = contactLines.length ? contactLines.join("") : "";
 
-  const logoHtml = logoUrl ? `<div id="coverLogo"><img src="${logoUrl}"></div>` : `<div id="coverLogo" style="padding-top:40px;"></div>`;
+  const safeLogoUrl = safeHttpUrl(logoUrl);
+  const logoHtml = safeLogoUrl ? `<div id="coverLogo"><img src="${esc(safeLogoUrl)}"></div>` : `<div id="coverLogo" style="padding-top:40px;"></div>`;
 
   const fullHtml = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
-      <title>${(s.client_name || "Client")}'s Financial Resilience Report</title>
+      <title>${esc(s.client_name || "Client")}'s Financial Resilience Report</title>
       <style>${printCSS}</style>
     </head>
     <body>
       ${logoHtml}
-      <h2 id="coverTitle">${s.client_name || "Client"}'s Financial Resilience Report</h2>
+      <h2 id="coverTitle">${esc(s.client_name || "Client")}'s Financial Resilience Report</h2>
       ${scoreHtml}
       <div id="coverAdviserContact">${adviserContactHtml}</div>
-      ${s.report_html}
+      ${sanitizeReportHtml(s.report_html)}
     </body>
     </html>
   `;
@@ -1875,7 +1963,7 @@ async function loadOutcomesRollup(id, column = "company_id", scopeLabel){
     .order("created_at", { ascending: false });
 
   if(error){
-    outcomesArea.innerHTML = "<p>Error loading outcomes: " + error.message + "</p>";
+    outcomesArea.innerHTML = "<p>Error loading outcomes: " + esc(error.message) + "</p>";
     return;
   }
 
@@ -1889,8 +1977,8 @@ async function loadOutcomesRollup(id, column = "company_id", scopeLabel){
 
   let rows = data.map(o => `
     <tr>
-      <td class="colLeft">${o.submissions?.client_name || "—"}</td>
-      <td class="colLeft">${o.products_taken || "—"}</td>
+      <td class="colLeft">${esc(o.submissions?.client_name || "—")}</td>
+      <td class="colLeft">${esc(o.products_taken || "—")}</td>
       <td>£${parseFloat(o.monthly_premium || 0).toFixed(2)}</td>
       <td>${new Date(o.created_at).toLocaleDateString()}</td>
     </tr>
@@ -1899,7 +1987,7 @@ async function loadOutcomesRollup(id, column = "company_id", scopeLabel){
   outcomesArea.innerHTML = `
     <div style="background:#fff;padding:20px;border-radius:8px;">
       <h3>Outcomes Summary</h3>
-      <p><b>Total monthly premium ${scopeLabel}:</b> £${totalPremium.toFixed(2)}</p>
+      <p><b>Total monthly premium ${esc(scopeLabel)}:</b> £${totalPremium.toFixed(2)}</p>
       <div class="tableScrollWrap">
         <table>
           <thead><tr><th class="colLeft">Client Name</th><th class="colLeft">Products Taken</th><th>Monthly Premium</th><th>Date</th></tr></thead>
@@ -1926,7 +2014,7 @@ async function loadUpcomingAppointments(column, id){
     .order("appointment_date", { ascending: true });
 
   if(error){
-    appointmentsArea.innerHTML = "<p>Error loading appointments: " + error.message + "</p>";
+    appointmentsArea.innerHTML = "<p>Error loading appointments: " + esc(error.message) + "</p>";
     return;
   }
 
@@ -1937,8 +2025,8 @@ async function loadUpcomingAppointments(column, id){
 
   let rows = data.map(a => `
     <tr>
-      ${showAdviser ? `<td class="colLeft">${a.advisers?.adviser_name || "—"}</td>` : ""}
-      <td class="colLeft">${a.submissions?.client_name || "—"}</td>
+      ${showAdviser ? `<td class="colLeft">${esc(a.advisers?.adviser_name || "—")}</td>` : ""}
+      <td class="colLeft">${esc(a.submissions?.client_name || "—")}</td>
       <td>${a.appointment_status === "follow_up_booked" ? "Follow-Up" : "Initial"}</td>
       <td>${new Date(a.appointment_date).toLocaleDateString()}</td>
     </tr>
@@ -2041,7 +2129,7 @@ async function loadAdviserComparison(companyId, monthValue, scopeAdviserId){
 
     return `
       <tr>
-        <td>${a.adviser_name}</td>
+        <td>${esc(a.adviser_name)}</td>
         <td>${reports}</td>
         <td>${appointments}</td>
         <td>${policies}</td>
@@ -2093,7 +2181,7 @@ async function loadSubscriptionSection(){
     .order("adviser_name", { ascending: true });
 
   if(error){
-    area.innerHTML = "<p>Error loading advisers: " + error.message + "</p>";
+    area.innerHTML = "<p>Error loading advisers: " + esc(error.message) + "</p>";
     return;
   }
 
@@ -2104,21 +2192,25 @@ async function loadSubscriptionSection(){
     .single();
 
   const advisers = data || [];
+  // Kept in memory so the Edit / Remove / Resend buttons can pass just an
+  // id, rather than pasting names and emails into inline script.
+  window.ADVISERS_BY_ID = {};
+  advisers.forEach(a => { window.ADVISERS_BY_ID[a.id] = a; });
   const billableCount = Math.max(0, advisers.length - FREE_ADVISER_ALLOWANCE);
   const totalPrice = BASE_PRICE + (billableCount * PER_ADVISER_PRICE);
 
   const rows = advisers.map(a => `
     <tr>
-      <td class="colLeft">${a.adviser_name}</td>
-      <td class="colLeft">${a.adviser_email}</td>
-      <td>${a.adviser_phone || "—"}</td>
+      <td class="colLeft">${esc(a.adviser_name)}</td>
+      <td class="colLeft">${esc(a.adviser_email)}</td>
+      <td>${esc(a.adviser_phone || "—")}</td>
       <td>
-        <span class="inviteBadge ${a.invite_status || 'pending'}" id="inviteBadge_${a.id}">${(a.invite_status || 'pending')}</span>
-        ${a.invite_status === "failed" ? `<span class="resendLink" onclick="resendInvite(${a.id}, '${a.adviser_email}')">Resend</span>` : ""}
+        <span class="inviteBadge ${safeInviteStatus(a.invite_status)}" id="inviteBadge_${a.id}">${safeInviteStatus(a.invite_status)}</span>
+        ${a.invite_status === "failed" ? `<span class="resendLink" onclick="resendInvite(${a.id})">Resend</span>` : ""}
       </td>
       <td class="colLeft">
-        <button class="removeAdviserBtn" style="background:#132869;margin-right:6px;" onclick="editAdviser(${a.id}, '${a.adviser_name.replace(/'/g,"\\'")}', '${(a.adviser_phone||'').replace(/'/g,"\\'")}', '${(a.booking_url||'').replace(/'/g,"\\'")}')">Edit</button>
-        <button class="removeAdviserBtn" onclick="removeAdviser(${a.id}, '${a.adviser_name.replace(/'/g,"\\'")}')">Remove</button>
+        <button class="removeAdviserBtn" style="background:#132869;margin-right:6px;" onclick="editAdviser(${a.id})">Edit</button>
+        <button class="removeAdviserBtn" onclick="removeAdviser(${a.id})">Remove</button>
       </td>
     </tr>
   `).join("");
@@ -2163,7 +2255,7 @@ async function loadSubscriptionSection(){
       <p style="font-size:13px;color:#666;">
         This is appended to every email sent to a client through the platform, after the adviser's "Kind Regards" sign-off — required for compliance (FCA/AR reference, registered office, confidentiality notice, etc.). Write it exactly as you want it to appear.
       </p>
-      <textarea id="companyEmailSignature" style="width:100%;padding:8px;box-sizing:border-box;" rows="8">${currentSignature}</textarea>
+      <textarea id="companyEmailSignature" style="width:100%;padding:8px;box-sizing:border-box;" rows="8">${esc(currentSignature)}</textarea>
       <button class="primaryBtn" style="margin-top:10px;" onclick="saveEmailSignature()">Save Signature</button>
       <div id="signatureStatus" style="margin-top:10px;"></div>
 
@@ -2253,7 +2345,12 @@ function updateAdviserSlugPreview(){
   preview.textContent = name.trim() ? `/${slugify(name)}` : "—";
 }
 
-function editAdviser(adviserId, name, phone, bookingUrl){
+function editAdviser(adviserId){
+  const adv = (window.ADVISERS_BY_ID || {})[adviserId];
+  if(!adv) return;
+  const name = adv.adviser_name || "";
+  const phone = adv.adviser_phone || "";
+  const bookingUrl = adv.booking_url || "";
   document.getElementById("editingAdviserId").value = adviserId;
   document.getElementById("newAdviserName").value = name;
   document.getElementById("newAdviserPhone").value = phone;
@@ -2350,7 +2447,9 @@ async function addAdviser(){
   }
 }
 
-async function removeAdviser(adviserId, adviserName){
+async function removeAdviser(adviserId){
+  const adv = (window.ADVISERS_BY_ID || {})[adviserId];
+  const adviserName = adv ? adv.adviser_name : "this adviser";
   if(!confirm(`Remove ${adviserName}? Their existing submissions and outcomes will be kept, but they'll lose dashboard access.`)) return;
 
   try {
@@ -2377,7 +2476,10 @@ async function removeAdviser(adviserId, adviserName){
   }
 }
 
-async function resendInvite(adviserId, adviserEmail){
+async function resendInvite(adviserId){
+  const adv = (window.ADVISERS_BY_ID || {})[adviserId];
+  const adviserEmail = adv ? adv.adviser_email : "";
+  if(!adviserEmail) return;
   try {
     const res = await fetch("/.netlify/functions/manage-advisers", {
       method: "POST",
@@ -2486,7 +2588,7 @@ async function loadConversionStats(companyId, monthValue, scopeAdviserId){
 
     return `
       <tr>
-        <td>${a.adviser_name}</td>
+        <td>${esc(a.adviser_name)}</td>
         <td>${reports}</td>
         <td>${appointments} (${pct(appointments, reports)})</td>
         <td>${coverTaken} (${pct(coverTaken, appointments)})</td>
@@ -2514,25 +2616,25 @@ async function loadConversionStats(companyId, monthValue, scopeAdviserId){
 const WIDGET_BASE_URL = "https://app.resiliencetool.co.uk";
 
 function buildWidgetBlock(adviserName, companySlug, adviserSlug){
-  const blockId = `widget_${adviserSlug}`;
+  const blockId = "widget_" + String(adviserSlug).replace(/[^a-zA-Z0-9_-]/g, "");
   const hostedLink = `${WIDGET_BASE_URL}/app/${companySlug}/${adviserSlug}`;
   const embedSnippet = `<div id="resilience-tool" data-client="${adviserSlug}"></div>\n<script src="${WIDGET_BASE_URL}/widget.js"><\/script>`;
   const iframeSnippet = `<iframe src="${hostedLink}" style="width:100%;height:800px;border:none;"></iframe>`;
 
   return `
     <div class="widgetAdviserBlock">
-      <h4>${adviserName}</h4>
+      <h4>${esc(adviserName)}</h4>
 
       <div class="snippetLabel">Hosted Link</div>
-      <div class="snippetBox" id="${blockId}_link">${hostedLink}</div>
+      <div class="snippetBox" id="${blockId}_link">${esc(hostedLink)}</div>
       <button class="copyBtn" onclick="copySnippet('${blockId}_link')">Copy Link</button>
 
       <div class="snippetLabel">Embed Snippet</div>
-      <div class="snippetBox" id="${blockId}_embed">${embedSnippet.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
+      <div class="snippetBox" id="${blockId}_embed">${esc(embedSnippet)}</div>
       <button class="copyBtn" onclick="copySnippet('${blockId}_embed')">Copy Embed Snippet</button>
 
       <div class="snippetLabel">Iframe Snippet</div>
-      <div class="snippetBox" id="${blockId}_iframe">${iframeSnippet.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
+      <div class="snippetBox" id="${blockId}_iframe">${esc(iframeSnippet)}</div>
       <button class="copyBtn" onclick="copySnippet('${blockId}_iframe')">Copy Iframe Snippet</button>
 
       <p style="font-size:12px;color:#888;margin-top:14px;">
@@ -2563,7 +2665,7 @@ async function loadWidgetSection(){
     .order("adviser_name", { ascending: true });
 
   if(error){
-    area.innerHTML = "<p>Error loading advisers: " + error.message + "</p>";
+    area.innerHTML = "<p>Error loading advisers: " + esc(error.message) + "</p>";
     return;
   }
 
@@ -2600,7 +2702,7 @@ async function loadScoreComparison(column, id){
     .order("created_at", { ascending: false });
 
   if(error){
-    area.innerHTML = "<p>Error loading score comparison: " + error.message + "</p>";
+    area.innerHTML = "<p>Error loading score comparison: " + esc(error.message) + "</p>";
     return;
   }
 
@@ -2651,8 +2753,8 @@ async function loadScoreComparison(column, id){
 
     return `
       <tr>
-        ${showAdviser ? `<td class="colLeft">${leaf.advisers?.adviser_name || "—"}</td>` : ""}
-        <td class="colLeft">${leaf.client_name || "—"}</td>
+        ${showAdviser ? `<td class="colLeft">${esc(leaf.advisers?.adviser_name || "—")}</td>` : ""}
+        <td class="colLeft">${esc(leaf.client_name || "—")}</td>
         <td>${root.score != null ? root.score : "—"}</td>
         <td>${leaf.score != null ? leaf.score : "—"}</td>
         <td class="${changeClass}">${changeText}</td>
